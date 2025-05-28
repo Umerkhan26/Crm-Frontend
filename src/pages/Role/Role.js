@@ -550,18 +550,30 @@ const componentPermissions = {
 
 // Mapping from frontend dot notation to backend colon notation
 const permissionMap = {
+  // Users
   "Users.view": "user:get",
   "Users.create": "user:create",
   "Users.edit": "user:update",
   "Users.delete": "user:delete",
+
+  // Campaigns
   "Campaigns.view": "campaign:get",
   "Campaigns.create": "campaign:create",
   "Campaigns.edit": "campaign:update",
   "Campaigns.delete": "campaign:delete",
+
+  // Orders
   "Orders.view": "order:get",
   "Orders.create": "order:create",
   "Orders.edit": "order:update",
   "Orders.delete": "order:delete",
+
+  // Leads
+  "Leads.view": "lead:getAll",
+  "Leads.create": "lead:create",
+  "Leads.edit": "lead:update",
+  "Leads.delete": "lead:delete",
+  "Leads.viewByCampaign": "lead:getByCampaign",
 };
 
 const CreateRole = () => {

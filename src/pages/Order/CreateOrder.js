@@ -576,17 +576,13 @@ const NewOrder = () => {
     } catch (error) {
       console.error("Order submission error:", error);
 
-      // Handle specific error cases
       if (error.response) {
-        // Server responded with a status code that falls out of 2xx range
         const errorMessage =
           error.response.data?.message || "Server error occurred";
         toast.error(errorMessage);
       } else if (error.request) {
-        // Request was made but no response received
         toast.error("Network error. Please check your connection.");
       } else {
-        // Something happened in setting up the request
         toast.error(error.message || "An unexpected error occurred");
       }
     } finally {

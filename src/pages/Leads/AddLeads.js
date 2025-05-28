@@ -17,204 +17,312 @@ import {
 } from "reactstrap";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 import Select from "react-select";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getCampaignFields } from "../../services/campaignService";
+import { fetchCampaigns } from "../../services/orderService";
+import { createLead, updateLead } from "../../services/leadService";
+import { toast } from "react-toastify";
+
+const US_STATES = [
+  "Alabama",
+  "Alaska",
+  "Arizona",
+  "Arkansas",
+  "California",
+  "Colorado",
+  "Connecticut",
+  "Delaware",
+  "Florida",
+  "Georgia",
+  "Hawaii",
+  "Idaho",
+  "Illinois",
+  "Indiana",
+  "Iowa",
+  "Kansas",
+  "Kentucky",
+  "Louisiana",
+  "Maine",
+  "Maryland",
+  "Massachusetts",
+  "Michigan",
+  "Minnesota",
+  "Mississippi",
+  "Missouri",
+  "Montana",
+  "Nebraska",
+  "Nevada",
+  "New Hampshire",
+  "New Jersey",
+  "New Mexico",
+  "New York",
+  "North Carolina",
+  "North Dakota",
+  "Ohio",
+  "Oklahoma",
+  "Oregon",
+  "Pennsylvania",
+  "Rhode Island",
+  "South Carolina",
+  "South Dakota",
+  "Tennessee",
+  "Texas",
+  "Utah",
+  "Vermont",
+  "Virginia",
+  "Washington",
+  "West Virginia",
+  "Wisconsin",
+  "Wyoming",
+];
 
 const AddLeads = () => {
   const location = useLocation();
   const editData = location.state?.editData;
-
-  // Form state
-  const [formData, setFormData] = useState({
-    campaignType: "",
-    agentName: "",
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
-    date: "",
-    state: "Alaska",
-    address: "",
-    city: "",
-    zipCode: "",
-    app: "",
-    smoke: "",
-    partABStatus: "",
-    supplement: "",
-    callBack: "",
-    localAgentName: "",
-    recordingLink1: "",
-    recordingLink2: "",
-    custom1: "",
-  });
-
+  const [formData, setFormData] = useState({});
+  const [campaignOptions, setCampaignOptions] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [campaignFields, setCampaignFields] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [modal, setModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Breadcrumb items
   const breadcrumbItems = [
     { title: "Dashboard", link: "/" },
     { title: "Leads", link: "/AllLeads" },
     { title: editData ? "Edit Lead" : "Add Leads", link: "#" },
   ];
 
-  useEffect(() => {
-    if (editData) {
-      // Initialize form with edit data
-      setFormData({
-        campaignType: editData.campaignType || "",
-        agentName: editData.agentName || "",
-        firstName: editData.firstName || "",
-        lastName: editData.lastName || "",
-        phoneNumber: editData.phoneNumber || "",
-        date: editData.date || "",
-        state: editData.state || "Alaska",
-        address: editData.address || "",
-        city: editData.city || "",
-        zipCode: editData.zipCode || "",
-        app: editData.app || "",
-        smoke: editData.smoke || "",
-        partABStatus: editData.partABStatus || "",
-        supplement: editData.supplement || "",
-        callBack: editData.callBack || "",
-        localAgentName: editData.localAgentName || "",
-        recordingLink1: editData.recordingLink1 || "",
-        recordingLink2: editData.recordingLink2 || "",
-        custom1: editData.custom1 || "",
-      });
-      setShowForm(true);
-    }
-  }, [editData]);
+  const initializeForm = (fields) => {
+    const initialFormData = {};
+    fields.forEach((field) => {
+      const cleanFieldName = field.col_slug.replace(/[^a-zA-Z0-9]/g, "_");
+      let value = findMatchingFieldValue(editData, cleanFieldName);
+      if (value === null) {
+        value = findMatchingFieldValue(
+          editData,
+          field.col_name.replace(/[^a-zA-Z0-9]/g, "_")
+        );
+      }
+      switch (field.col_type) {
+        case "checkbox":
+          initialFormData[field.col_slug] = Boolean(value);
+          break;
+        case "date":
+          initialFormData[field.col_slug] = value
+            ? new Date(value).toISOString().split("T")[0]
+            : "";
+          break;
+        case "number":
+          initialFormData[field.col_slug] = value !== null ? Number(value) : "";
+          break;
+        default:
+          initialFormData[field.col_slug] = value !== null ? String(value) : "";
+      }
+    });
+    return initialFormData;
+  };
 
-  // Handle input changes
+  const findMatchingFieldValue = (leadData, fieldName) => {
+    if (leadData[fieldName] !== undefined) return leadData[fieldName];
+    const variations = [
+      fieldName,
+      fieldName.toLowerCase(),
+      fieldName.replace(/_/g, ""),
+      camelCase(fieldName),
+      snakeCase(fieldName),
+      fieldName.replace(/[^a-zA-Z0-9]/g, ""),
+    ];
+    const searchObjects = [leadData];
+    if (leadData.fullLeadData) searchObjects.push(leadData.fullLeadData);
+    if (leadData.leadData) searchObjects.push(leadData.leadData);
+    for (const obj of searchObjects) {
+      for (const variation of variations) {
+        if (obj[variation] !== undefined) {
+          return obj[variation];
+        }
+      }
+    }
+    return null;
+  };
+
+  const camelCase = (str) =>
+    str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+  const snakeCase = (str) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
+
+  useEffect(() => {
+    const loadCampaigns = async () => {
+      try {
+        setIsLoading(true);
+        const campaigns = await fetchCampaigns();
+        setCampaignOptions(campaigns);
+        if (editData) {
+          const selected = campaigns.find(
+            (c) => c.label === editData.campaignType
+          );
+          if (selected) {
+            const fields = await getCampaignFields(selected.value);
+            setCampaignFields(fields);
+            setFormData(initializeForm(fields));
+            setSelectedCampaign(selected);
+            setShowForm(true);
+          } else {
+            toast.error("The campaign for this lead is no longer available.");
+            navigate("/lead-index");
+          }
+        }
+      } catch (error) {
+        toast.error("Failed to load campaign data.");
+        setShowForm(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCampaigns();
+  }, [editData, navigate]);
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  // Toggle modal
+  const handleCampaignChange = async (selectedOption) => {
+    try {
+      setIsLoading(true);
+      setSelectedCampaign(selectedOption);
+      if (selectedOption) {
+        const fields = await getCampaignFields(selectedOption.value);
+        setCampaignFields(fields);
+        setFormData(initializeForm(fields));
+        setShowForm(true);
+      } else {
+        setShowForm(false);
+      }
+    } catch (error) {
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const toggleModal = () => setModal(!modal);
 
-  // Handle file selection
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
   };
 
-  // Handle campaign selection
-  const handleCampaignChange = (e) => {
-    handleChange(e);
-    setShowForm(e.target.value !== "");
-  };
-
-  // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
-      // API call would go here
-      console.log("Form data to submit:", formData);
-      alert(
-        editData ? "Lead updated successfully!" : "Lead submitted successfully!"
-      );
+      if (editData) {
+        const payload = { ...formData };
+        const response = await updateLead(editData.id, payload);
+        toast.success(response.message || "Lead updated successfully!");
 
-      if (!editData) {
-        // Reset form after submission only for new leads
-        setFormData({
-          campaignType: "",
-          agentName: "",
-          firstName: "",
-          lastName: "",
-          phoneNumber: "",
-          date: "",
-          state: "Alaska",
-          address: "",
-          city: "",
-          zipCode: "",
-          app: "",
-          smoke: "",
-          partABStatus: "",
-          supplement: "",
-          callBack: "",
-          localAgentName: "",
-          recordingLink1: "",
-          recordingLink2: "",
-          custom1: "",
-        });
-        setShowForm(false);
+        // Option 1: Update local state if leads are stored in a parent component
+        // Assuming you have a context or prop to update the leads list
+        // updateLeadsList(response.lead); // Example: Update parent state
+
+        // Option 2: Re-fetch the leads list
+        const updatedCampaigns = await fetchCampaigns(); // Or fetch leads specifically
+        setCampaignOptions(updatedCampaigns); // Update campaigns or leads as needed
+      } else {
+        const payload = {
+          campaignName: selectedCampaign.label,
+          leadData: formData,
+        };
+        const response = await createLead(payload);
+        toast.success(response.message || "Lead created successfully!");
       }
+      navigate("/lead-index");
     } catch (error) {
-      console.error("Submission error:", error);
-      alert("Error submitting form");
+      toast.error(error.message || "Error submitting form");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // US states for dropdown
-  const states = [
-    "Alabama",
-    "Alaska",
-    "Arizona",
-    "Arkansas",
-    "California",
-    "Colorado",
-    "Connecticut",
-    "Delaware",
-    "Florida",
-    "Georgia",
-    "Hawaii",
-    "Idaho",
-    "Illinois",
-    "Indiana",
-    "Iowa",
-    "Kansas",
-    "Kentucky",
-    "Louisiana",
-    "Maine",
-    "Maryland",
-    "Massachusetts",
-    "Michigan",
-    "Minnesota",
-    "Mississippi",
-    "Missouri",
-    "Montana",
-    "Nebraska",
-    "Nevada",
-    "New Hampshire",
-    "New Jersey",
-    "New Mexico",
-    "New York",
-    "North Carolina",
-    "North Dakota",
-    "Ohio",
-    "Oklahoma",
-    "Oregon",
-    "Pennsylvania",
-    "Rhode Island",
-    "South Carolina",
-    "South Dakota",
-    "Tennessee",
-    "Texas",
-    "Utah",
-    "Vermont",
-    "Virginia",
-    "Washington",
-    "West Virginia",
-    "Wisconsin",
-    "Wyoming",
-  ];
+  const renderStateField = (field) => (
+    <Input
+      type="select"
+      name={field.col_slug}
+      value={formData[field.col_slug] || ""}
+      onChange={handleChange}
+    >
+      <option value="">Select a state</option>
+      {US_STATES.map((state) => (
+        <option key={state} value={state}>
+          {state}
+        </option>
+      ))}
+    </Input>
+  );
 
-  const campaignOptions = [
-    {
-      value: "Callback - Final Expense (Direct Mail)",
-      label: "Callback - Final Expense (Direct Mail)",
-    },
-    { value: "Callback - Final Expense", label: "Callback - Final Expense" },
-  ];
+  const renderField = (field) => {
+    if (field.col_slug.toLowerCase() === "state") {
+      return renderStateField(field);
+    }
+    const commonProps = {
+      key: field.id,
+      name: field.col_slug,
+      value: formData[field.col_slug] || "",
+      onChange: handleChange,
+      required: true,
+    };
+    switch (field.col_type) {
+      case "text":
+      case "number":
+      case "date":
+        return (
+          <Input
+            type={
+              field.col_type === "date"
+                ? "date"
+                : field.col_type === "number"
+                ? "number"
+                : "text"
+            }
+            {...commonProps}
+            placeholder={field.default_value || ""}
+          />
+        );
+      case "dropdown":
+      case "radio":
+        return (
+          <Input type="select" {...commonProps}>
+            <option value="">Select an option</option>
+            {field.options?.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </Input>
+        );
+      case "checkbox":
+        return (
+          <Input
+            type="checkbox"
+            checked={formData[field.col_slug] || false}
+            onChange={(e) =>
+              handleChange({
+                target: {
+                  name: field.col_slug,
+                  value: e.target.checked,
+                },
+              })
+            }
+          />
+        );
+      default:
+        return <Input type="text" {...commonProps} />;
+    }
+  };
 
   return (
     <div className="page-content">
@@ -231,22 +339,16 @@ const AddLeads = () => {
                 id="campaignType"
                 name="campaignType"
                 options={campaignOptions}
-                value={campaignOptions.find(
-                  (option) => option.value === formData.campaignType
-                )}
-                onChange={(selectedOption) =>
-                  handleCampaignChange({
-                    target: {
-                      name: "campaignType",
-                      value: selectedOption.value,
-                    },
-                  })
-                }
+                value={selectedCampaign}
+                onChange={handleCampaignChange}
                 isSearchable
-                placeholder="Select"
+                placeholder={
+                  isLoading ? "Loading campaigns..." : "Select a campaign"
+                }
+                isLoading={isLoading}
+                isDisabled={isLoading || editData}
               />
             </FormGroup>
-
             <Modal isOpen={modal} toggle={toggleModal}>
               <ModalHeader toggle={toggleModal}>Add Bulk Lead</ModalHeader>
               <ModalBody>
@@ -268,7 +370,6 @@ const AddLeads = () => {
                   style={{ width: "100px" }}
                   onClick={() => {
                     if (selectedFile) {
-                      console.log("Uploading file:", selectedFile);
                       alert("File uploaded successfully!");
                       toggleModal();
                     } else {
@@ -280,7 +381,6 @@ const AddLeads = () => {
                 </Button>
               </ModalFooter>
             </Modal>
-
             {showForm && (
               <Form onSubmit={handleSubmit} className="mt-4">
                 {!editData && (
@@ -292,247 +392,21 @@ const AddLeads = () => {
                     Import Leads
                   </Button>
                 )}
-
                 <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Agent Name</Label>
-                      <Input
-                        type="text"
-                        name="agentName"
-                        value={formData.agentName}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>First Name</Label>
-                      <Input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Last Name</Label>
-                      <Input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Phone Number</Label>
-                      <Input
-                        type="text"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        placeholder="10 digits only"
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Date</Label>
-                      <Input
-                        type="text"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleChange}
-                        placeholder="mm/dd/yyyy"
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>State</Label>
-                      <Input
-                        type="select"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleChange}
-                      >
-                        {states.map((state) => (
-                          <option key={state} value={state}>
-                            {state}
-                          </option>
-                        ))}
-                      </Input>
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Address</Label>
-                      <Input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>City</Label>
-                      <Input
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Zip Code</Label>
-                      <Input
-                        type="text"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleChange}
-                        placeholder="12345 or 12345-6789"
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>App</Label>
-                      <Input
-                        type="text"
-                        name="app"
-                        value={formData.app}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Smoke</Label>
-                      <Input
-                        type="text"
-                        name="smoke"
-                        value={formData.smoke}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Part A & B Status</Label>
-                      <Input
-                        type="text"
-                        name="partABStatus"
-                        value={formData.partABStatus}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Supplement</Label>
-                      <Input
-                        type="text"
-                        name="supplement"
-                        value={formData.supplement}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Call Back</Label>
-                      <Input
-                        type="text"
-                        name="callBack"
-                        value={formData.callBack}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Local Agent Name</Label>
-                      <Input
-                        type="text"
-                        name="localAgentName"
-                        value={formData.localAgentName}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Recording Link 1</Label>
-                      <Input
-                        type="text"
-                        name="recordingLink1"
-                        value={formData.recordingLink1}
-                        onChange={handleChange}
-                        placeholder="https://example.com"
-                      />
-                    </FormGroup>
-                  </Col>
-                </Row>
-
-                <Row>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Recording Link 2</Label>
-                      <Input
-                        type="text"
-                        name="recordingLink2"
-                        value={formData.recordingLink2}
-                        onChange={handleChange}
-                        placeholder="https://example.com"
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
-                    <FormGroup>
-                      <Label>Custom 1</Label>
-                      <Input
-                        type="text"
-                        name="custom1"
-                        value={formData.custom1}
-                        onChange={handleChange}
-                      />
-                    </FormGroup>
-                  </Col>
+                  {campaignFields.map((field) => (
+                    <Col md={6} key={field.id}>
+                      <FormGroup>
+                        <Label>{field.col_name}</Label>
+                        {renderField(field)}
+                      </FormGroup>
+                    </Col>
+                  ))}
                 </Row>
                 <Button
                   style={{ width: "100px" }}
                   color="primary"
                   className="mt-3"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoading}
                 >
                   {isSubmitting
                     ? "Submitting..."

@@ -250,7 +250,8 @@ const Allorders = () => {
   ]);
 
   const breadcrumbItems = [
-    { title: "Orders", link: "/" },
+    { title: "Dashboard", link: "/" },
+    { title: "Orders", link: "#" },
     { title: "All Orders", link: "#" },
   ];
 

@@ -1,4 +1,5 @@
 import { API_URL } from "./auth";
+import { getAuthToken } from "./orderService";
 
 export const createCampaign = async (campaignData) => {
   try {
@@ -27,42 +28,6 @@ export const createCampaign = async (campaignData) => {
   } catch (error) {
     console.error("Error creating campaign:", error);
     throw error;
-  }
-};
-
-export const getCampaignById = async (id) => {
-  try {
-    // Validate ID
-    if (!id || isNaN(id)) {
-      throw new Error("Invalid campaign ID");
-    }
-
-    const API_URL =
-      process.env.REACT_APP_API_URL || "http://localhost:3001/api";
-    const response = await fetch(`${API_URL}/getCampaignById/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to fetch campaign fields");
-    }
-
-    const data = await response.json();
-
-    // Ensure the response has the expected structure
-    if (!data.fields && !data.campaignName) {
-      throw new Error("Invalid campaign data structure");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error fetching campaign fields:", error);
-    throw new Error(error.message || "Failed to fetch campaign data");
   }
 };
 
@@ -101,6 +66,32 @@ export const fetchCampaigns = async () => {
   } catch (error) {
     console.error("Error fetching campaigns:", error.message);
     throw error;
+  }
+};
+
+export const getCampaignFields = async (campaignId) => {
+  if (!campaignId) {
+    throw new Error("Campaign ID is undefined or invalid.");
+  }
+
+  try {
+    const token = getAuthToken();
+    const response = await fetch(`${API_URL}/getCampaignById/${campaignId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to fetch campaign fields.");
+    }
+
+    return result.fields || [];
+  } catch (error) {
+    throw new Error(`Error fetching campaign fields: ${error.message}`);
   }
 };
 

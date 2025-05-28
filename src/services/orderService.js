@@ -1,6 +1,6 @@
 import { API_URL } from "./auth";
 
-const getAuthToken = () => {
+export const getAuthToken = () => {
   const token = localStorage.getItem("token");
   if (!token) {
     throw new Error("You are not authenticated. Please log in.");

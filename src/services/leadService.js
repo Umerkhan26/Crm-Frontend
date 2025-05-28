@@ -1,0 +1,106 @@
+import { API_URL } from "./auth";
+import { getAuthToken } from "./orderService";
+
+export const createLead = async (leadData) => {
+  try {
+    const token = getAuthToken();
+    const response = await fetch(`${API_URL}/leads`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(leadData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to create lead");
+    }
+
+    return result;
+  } catch (error) {
+    throw new Error(`Error creating lead: ${error.message}`);
+  }
+};
+
+export const fetchAllLeads = async () => {
+  const token = getAuthToken();
+  try {
+    const response = await fetch(`${API_URL}/leads`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch leads");
+    }
+
+    const data = await response.json();
+    return data.map((lead) => {
+      const leadDataObj = JSON.parse(lead.leadData);
+      return {
+        id: lead.id,
+        campaignType: lead.campaignName,
+        agentName: leadDataObj.agent_name || "Default",
+        firstName: leadDataObj.first_name || "Default",
+        lastName: leadDataObj.last_name || "Default",
+        phoneNumber: leadDataObj.phone_number || "Default",
+        state: leadDataObj.state || "Unknown",
+        reason: leadDataObj.reason || "",
+        status: leadDataObj.status || "Pending",
+        fullLeadData: leadDataObj,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching leads:", error);
+    throw error;
+  }
+};
+
+export const updateLead = async (id, updatedData) => {
+  try {
+    const response = await fetch(`${API_URL}/leads/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(updatedData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update lead");
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteLead = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/leads/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete lead");
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
