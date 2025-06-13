@@ -60,7 +60,7 @@
     "react-router-dom": "^6.28.0",
     "react-script": "^2.0.5",
     "react-scripts": "^5.0.1",
-    "react-select": "^5.8.2",
+    "react-select": "^5.10.1",
     "react-simple-star-rating": "^5.1.7",
     "react-sparklines": "^1.7.0",
     "react-spinners": "^0.17.0",

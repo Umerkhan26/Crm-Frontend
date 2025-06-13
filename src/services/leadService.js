@@ -25,23 +25,32 @@ export const createLead = async (leadData) => {
   }
 };
 
-export const fetchAllLeads = async () => {
+export const fetchAllLeads = async (page = 1, pageSize = 10) => {
   const token = getAuthToken();
   try {
-    const response = await fetch(`${API_URL}/leads`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `${API_URL}/leads?page=${page}&limit=${pageSize}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
-      throw new Error("Failed to fetch leads");
+      throw new Error(`Failed to fetch leads: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.map((lead) => {
+    const result = await response.json();
+
+    // Check if result.data exists and is an array
+    if (!result.data || !Array.isArray(result.data)) {
+      throw new Error("Invalid response format: Expected an array of leads");
+    }
+
+    const leads = result.data.map((lead) => {
       const leadDataObj = JSON.parse(lead.leadData);
       return {
         id: lead.id,
@@ -56,6 +65,13 @@ export const fetchAllLeads = async () => {
         fullLeadData: leadDataObj,
       };
     });
+
+    return {
+      data: leads,
+      totalPages: result.totalPages,
+      totalItems: result.totalItems,
+      currentPage: result.currentPage,
+    };
   } catch (error) {
     console.error("Error fetching leads:", error);
     throw error;

@@ -31,19 +31,24 @@ export const createCampaign = async (campaignData) => {
   }
 };
 
-export const fetchCampaigns = async () => {
+export const fetchCampaigns = async ({ page = 1, limit = 10 }) => {
   const token = localStorage.getItem("token");
 
   if (!token) {
     throw new Error("No token provided");
   }
+
   try {
-    const response = await fetch(`${API_URL}/getAllCampaigns`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `${API_URL}/getAllCampaigns?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -51,21 +56,26 @@ export const fetchCampaigns = async () => {
     const data = await response.json();
     console.log("API response:", data);
 
-    // Convert the object to a flat array of campaign objects
-    const campaigns = Object.values(data).flat();
+    const groupedCampaigns = data.groupedCampaigns || {};
+    const allCampaigns = Object.values(groupedCampaigns).flat();
 
-    return campaigns.map((campaign) => ({
-      id: campaign.id,
-      campaignName: campaign.campaignName,
-      parsedFields: campaign.fields ? JSON.parse(campaign.fields) : [],
-    }));
+    return {
+      data: allCampaigns.map((campaign) => ({
+        id: campaign.id,
+        campaignName: campaign.campaignName,
+        parsedFields: campaign.fields ? JSON.parse(campaign.fields) : [],
+      })),
+      totalItems: data.totalItems,
+      totalPages: data.totalPages,
+      currentPage: data.currentPage,
+    };
   } catch (error) {
     console.error("Error fetching campaigns:", error);
     throw error;
   }
 };
 
-export const getCampaignFields = async (campaignId) => {
+export const getCampaignById = async (campaignId) => {
   if (!campaignId) {
     throw new Error("Campaign ID is undefined or invalid.");
   }

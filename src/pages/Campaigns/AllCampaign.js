@@ -5,7 +5,6 @@ import {
   CardBody,
   Container,
   Input,
-  Label,
   Row,
   Col,
   Dropdown,
@@ -23,15 +22,16 @@ import { fetchAllOrders } from "../../services/orderService";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const AllCampaigns = () => {
-  const [entriesPerPage, setEntriesPerPage] = useState(50);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [campaigns, setCampaigns] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const { confirmDelete } = useDeleteConfirmation();
-
-  // const user = JSON.parse(localStorage.getItem("authuser"));
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,19 +40,37 @@ const AllCampaigns = () => {
         const ordersData = await fetchAllOrders();
         setOrders(ordersData.data || []);
 
-        // Load Campaigns
-        const campaignsData = await fetchCampaigns();
-        console.log("all Campaign", campaignsData);
-        setCampaigns(campaignsData);
+        // Load Campaigns with pagination
+        const campaignsData = await fetchCampaigns({
+          page: currentPage,
+          limit: entriesPerPage,
+        });
+        setCampaigns(campaignsData.data);
+        setTotalItems(campaignsData.totalItems);
+        setTotalPages(campaignsData.totalPages);
       } catch (error) {
         console.error("Error loading data:", error);
+        toast.error("Failed to load campaigns");
       }
     };
 
     loadData();
-  }, []);
+  }, [currentPage, entriesPerPage]);
 
   const toggleDropdown = () => setDropdownOpen((prevState) => !prevState);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const handlePageInputChange = (event) => {
+    const page = event.target.value ? Number(event.target.value) : 1;
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const isCampaignLinked = (campaignId) => {
     if (!Array.isArray(orders)) return false;
@@ -76,8 +94,10 @@ const AllCampaigns = () => {
     navigate("/create-campaign", { state: { editData } });
   };
 
-  const filteredData = campaigns.filter((campaign) =>
-    campaign.campaignName.toLowerCase().includes(searchText.toLowerCase())
+  const filteredData = campaigns.filter(
+    (campaign) =>
+      campaign?.campaignName &&
+      campaign.campaignName.toLowerCase().includes(searchText.toLowerCase())
   );
 
   const handleDelete = async (campaignId) => {
@@ -91,8 +111,17 @@ const AllCampaigns = () => {
     }
 
     const deleteFn = () => deleteCampaign(campaignId);
-    const onSuccess = () =>
+    const onSuccess = async () => {
       setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
+      setTotalItems((prev) => prev - 1);
+      const newTotalPages = Math.ceil((totalItems - 1) / entriesPerPage);
+      setTotalPages(newTotalPages);
+      if (campaigns.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => prev - 1);
+      } else if (campaigns.length === 1 && currentPage === 1) {
+        setCampaigns([]);
+      }
+    };
 
     confirmDelete(deleteFn, onSuccess, "campaign");
   };
@@ -137,48 +166,20 @@ const AllCampaigns = () => {
           />
           <Card>
             <CardBody>
-              <Row className="mb-3">
-                <Col md={6}>
-                  <div className="d-flex align-items-center">
-                    <Label className="me-2">Show</Label>
-                    <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
-                      <DropdownToggle caret className="btn-sm">
-                        {entriesPerPage}
-                      </DropdownToggle>
-                      <DropdownMenu>
-                        <DropdownItem onClick={() => setEntriesPerPage(10)}>
-                          10
-                        </DropdownItem>
-                        <DropdownItem onClick={() => setEntriesPerPage(25)}>
-                          25
-                        </DropdownItem>
-                        <DropdownItem onClick={() => setEntriesPerPage(50)}>
-                          50
-                        </DropdownItem>
-                        <DropdownItem onClick={() => setEntriesPerPage(100)}>
-                          100
-                        </DropdownItem>
-                      </DropdownMenu>
-                    </Dropdown>
-                    <Label className="ms-2">entries</Label>
-                  </div>
-                </Col>
-                <Col md={6} className="text-md-end">
-                  <div className="d-inline-block">
-                    <Input
-                      type="text"
-                      placeholder="Search..."
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      style={{ width: "200px" }}
-                      className="form-control-sm"
-                    />
-                  </div>
-                </Col>
-              </Row>
+              <div className="d-flex justify-content-end align-items-end mb-3">
+                <div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                  />
+                </div>
+              </div>
 
               <div className="table-responsive">
-                <table className="table table-bordered table-nowrap ">
+                <table className="table table-bordered table-nowrap">
                   <thead className="table-light">
                     <tr style={{ fontSize: "14px" }}>
                       <th>Campaign Name</th>
@@ -187,13 +188,17 @@ const AllCampaigns = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.slice(0, entriesPerPage).map((row) => (
+                    {filteredData.map((row) => (
                       <tr key={row.id}>
                         <td style={{ fontSize: "13px" }}>
                           <button
-                            onClick={() =>
-                              navigate(`/order-index?campaign=${row.id}`)
-                            }
+                            onClick={() => {
+                              sessionStorage.setItem(
+                                "fromCampaignLink",
+                                "true"
+                              );
+                              navigate(`/order-index?campaign=${row.id}`);
+                            }}
                             style={{
                               color: "blue",
                               cursor: "pointer",
@@ -206,7 +211,6 @@ const AllCampaigns = () => {
                             {row.campaignName}
                           </button>
                         </td>
-
                         <td style={{ fontSize: "12px" }}>
                           {formatColumns(row.parsedFields || [])}
                         </td>
@@ -233,7 +237,6 @@ const AllCampaigns = () => {
                           >
                             <FiEdit2 size={14} />
                           </Button>
-
                           <Button
                             color="danger"
                             size="sm"
@@ -249,26 +252,91 @@ const AllCampaigns = () => {
                 </table>
               </div>
 
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  Showing{" "}
-                  {filteredData.length > entriesPerPage
-                    ? entriesPerPage
-                    : filteredData.length}{" "}
-                  of {filteredData.length} entries
-                </div>
-                <div>
-                  <Button color="light" size="sm" className="me-1" disabled>
-                    Previous
-                  </Button>
-                  <Button color="primary" size="sm" className="me-1">
-                    1
-                  </Button>
-                  <Button color="light" size="sm" disabled>
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <Row className="justify-content-md-end justify-content-center align-items-center mt-3">
+                <Col md={3} className="d-flex align-items-center">
+                  <span className="me-2">Show:</span>
+                  <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
+                    <DropdownToggle
+                      caret
+                      color="light"
+                      className="py-1 px-2 btn-sm"
+                    >
+                      {entriesPerPage}
+                    </DropdownToggle>
+                    <DropdownMenu>
+                      {[10, 25, 50, 100].map((size) => (
+                        <DropdownItem
+                          key={size}
+                          active={entriesPerPage === size}
+                          onClick={() => {
+                            setEntriesPerPage(size);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          {size}
+                        </DropdownItem>
+                      ))}
+                    </DropdownMenu>
+                  </Dropdown>
+                  <span className="ms-2">entries</span>
+                </Col>
+
+                <Col md={6} className="d-flex justify-content-center">
+                  <div className="d-flex align-items-center gap-2">
+                    <Button
+                      color="primary"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      size="sm"
+                    >
+                      {"<<"}
+                    </Button>
+                    <Button
+                      color="primary"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      size="sm"
+                    >
+                      {"<"}
+                    </Button>
+
+                    <div className="mx-2 d-flex align-items-center">
+                      <span className="me-2">Page</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={handlePageInputChange}
+                        style={{ width: "60px" }}
+                        bsSize="sm"
+                      />
+                      <span className="ms-2">of {totalPages}</span>
+                    </div>
+
+                    <Button
+                      color="primary"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      size="sm"
+                    >
+                      {">"}
+                    </Button>
+                    <Button
+                      color="primary"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      size="sm"
+                    >
+                      {">>"}
+                    </Button>
+                  </div>
+                </Col>
+
+                <Col md={3} className="text-md-end">
+                  <span>Total: {totalItems} items</span>
+                </Col>
+              </Row>
             </CardBody>
           </Card>
         </Container>

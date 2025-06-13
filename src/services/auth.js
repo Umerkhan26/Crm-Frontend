@@ -36,16 +36,19 @@ export const updateUserById = async (id, payload, token) => {
   return result;
 };
 
-export const getAllUsers = async () => {
+export const getAllUsers = async ({ page = 1, limit = 10 }) => {
   try {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`${API_URL}/getAllUsers`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${API_URL}/getAllUsers?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const data = await response.json();
 
@@ -53,7 +56,7 @@ export const getAllUsers = async () => {
       throw new Error(data.message || "Failed to fetch users");
     }
 
-    return data.users;
+    return data;
   } catch (error) {
     throw new Error(error.message || "Network error");
   }

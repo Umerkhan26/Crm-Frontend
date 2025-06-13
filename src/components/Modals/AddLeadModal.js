@@ -16,6 +16,7 @@ import {
 import { createClientLead } from "../../services/ClientleadService";
 import { toast } from "react-toastify";
 import { US_STATES } from "../Constrant/constrant";
+import Select from "react-select";
 
 const AddLeadModal = ({ isOpen, toggle, onSubmit, selectedOrder }) => {
   const [formData, setFormData] = useState({});
@@ -99,23 +100,40 @@ const AddLeadModal = ({ isOpen, toggle, onSubmit, selectedOrder }) => {
       field.col_slug === "state" ||
       field.col_type?.toLowerCase() === "state"
     ) {
+      const stateOptions = US_STATES.map((state) => ({
+        value: state,
+        label: state,
+      }));
+
       return (
-        <Input
-          type="select"
+        <Select
           name={field.col_slug}
           id={field.col_slug}
-          value={formData[field.col_slug] || ""}
-          onChange={handleInputChange}
-          required={field.required}
-          style={inputStyle}
-        >
-          <option value="">Select a state</option>
-          {US_STATES.map((state) => (
-            <option key={state} value={state}>
-              {state}
-            </option>
-          ))}
-        </Input>
+          options={stateOptions}
+          value={
+            stateOptions.find(
+              (opt) => opt.value === formData[field.col_slug]
+            ) || null
+          }
+          onChange={(selectedOption) =>
+            handleInputChange({
+              target: {
+                name: field.col_slug,
+                value: selectedOption ? selectedOption.value : "",
+              },
+            })
+          }
+          isClearable
+          placeholder="Select a state"
+          styles={{
+            control: (base) => ({
+              ...base,
+              minHeight: "35px",
+              fontSize: "0.875rem",
+              marginBottom: "0.1rem",
+            }),
+          }}
+        />
       );
     }
 
@@ -178,22 +196,29 @@ const AddLeadModal = ({ isOpen, toggle, onSubmit, selectedOrder }) => {
           );
         }
         return (
-          <Input
-            type="select"
+          <Select
             name={field.col_slug}
             id={field.col_slug}
-            value={formData[field.col_slug] || ""}
-            onChange={handleInputChange}
+            value={
+              formData[field.col_slug]
+                ? normalizedSelectOptions.find(
+                    (opt) => opt.value === formData[field.col_slug]
+                  )
+                : null
+            }
+            onChange={(selectedOption) =>
+              handleInputChange({
+                target: {
+                  name: field.col_slug,
+                  value: selectedOption?.value || "",
+                },
+              })
+            }
+            options={normalizedSelectOptions}
+            placeholder="Select an option"
+            isClearable
             required={field.required}
-            style={inputStyle}
-          >
-            <option value="">Select an option</option>
-            {normalizedSelectOptions.map((option, index) => (
-              <option key={index} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Input>
+          />
         );
       case "radio":
         const normalizedRadioOptions = normalizeOptions(field.options);

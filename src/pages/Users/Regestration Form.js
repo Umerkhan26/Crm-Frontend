@@ -52,10 +52,11 @@ const RegisterUser = () => {
 
   useEffect(() => {
     const loadRoles = async () => {
-      setLoading(true); // Start loader
+      setLoading(true);
       try {
         const response = await getAllRoles();
-        const roles = Array.isArray(response) ? response : response.roles || [];
+        console.log("ALL ROLES", response);
+        const roles = Array.isArray(response.data) ? response.data : [];
         const options = roles.map((role) => ({
           value: role.id,
           label: role.name,
@@ -75,7 +76,7 @@ const RegisterUser = () => {
             website: user.user.website || "",
             coverage: user.user.coverage || "",
             linkedin: user.user.linkedin || "",
-            userImage: null, // Corrected from useruimage
+            userImage: null,
             referred_to: user.user.referred_to || "",
             smtpemail: user.user.smtpemail || "",
             smtppassword: "",
@@ -109,7 +110,7 @@ const RegisterUser = () => {
         console.error("Error fetching roles:", error);
         toast.error("Failed to load roles. Please try again.");
       } finally {
-        setLoading(false); // Stop loader
+        setLoading(false);
       }
     };
 

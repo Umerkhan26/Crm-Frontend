@@ -12,7 +12,6 @@ import {
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { FaLock, FaUnlock } from "react-icons/fa";
 import { blockOrUnblockUser as blockUnblockUserService } from "../../services/auth";
-
 import { deleteUserById, getAllUsers, getUserById } from "../../services/auth";
 import TableContainer from "../../components/Common/TableContainer";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
@@ -24,6 +23,7 @@ import "react-confirm-alert/src/react-confirm-alert.css";
 import { ClipLoader } from "react-spinners";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { getAllRoles } from "../../services/roleService";
+import useBlockUnblockConfirmation from "../../components/Modals/useBlockUnblockConfirmation";
 
 const AllUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -34,10 +34,15 @@ const AllUsers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [roles, setRoles] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 10,
+  });
   const { confirmDelete } = useDeleteConfirmation();
-
   const navigate = useNavigate();
-
+  const { confirmBlockUnblock } = useBlockUnblockConfirmation();
   const toggleDropdown = () => setDropdownOpen((prevState) => !prevState);
   const toggleModal = () => setIsModalOpen((prev) => !prev);
 
@@ -45,18 +50,28 @@ const AllUsers = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [usersData, rolesResponse] = await Promise.all([
-          getAllUsers(),
-          getAllRoles(),
+        const [usersResponse, rolesResponse] = await Promise.all([
+          getAllUsers({
+            page: pagination.currentPage,
+            limit: pagination.pageSize,
+          }),
+          getAllRoles({
+            page: pagination.currentPage,
+            limit: pagination.pageSize,
+          }),
         ]);
 
         const normalizedRoles = Array.isArray(rolesResponse)
           ? rolesResponse
-          : rolesResponse?.roles || [];
+          : rolesResponse?.data || [];
 
-        setUsers(usersData);
+        setUsers(usersResponse.data);
+        setPagination((prev) => ({
+          ...prev,
+          totalPages: usersResponse.totalPages || 1,
+          totalItems: usersResponse.totalItems || 0,
+        }));
         setRoles(normalizedRoles);
-        console.log("All users:", usersData);
       } catch (error) {
         setError(error.message);
         console.error("Error fetching users or roles:", error);
@@ -66,7 +81,7 @@ const AllUsers = () => {
     };
 
     fetchData();
-  }, []);
+  }, [pagination.currentPage, pagination.pageSize]);
 
   const handleLoginClick = async (userId) => {
     setLoading(true);
@@ -75,7 +90,6 @@ const AllUsers = () => {
       const userData = response.user;
       setSelectedUser(userData);
       setIsModalOpen(true);
-      console.log("Specific user details", userData);
     } catch (err) {
       console.error("Failed to fetch user:", err);
       toast.error("Failed to fetch user details.");
@@ -88,7 +102,6 @@ const AllUsers = () => {
     setLoading(true);
     try {
       const user = await getUserById(userId);
-      console.log("User data for edit:", user);
       navigate("/user-register", { state: { user } });
     } catch (err) {
       console.error("Failed to fetch user for edit:", err);
@@ -98,59 +111,64 @@ const AllUsers = () => {
     }
   };
 
-  const handleBlockOrUnblock = async (userId, isBlocked) => {
+  const handleBlockOrUnblock = (userId, isBlocked) => {
     const action = isBlocked ? "unblock" : "block";
 
-    confirmAlert({
-      title: `Confirm ${action}`,
-      message: `Are you sure you want to ${action} this user?`,
-      buttons: [
-        {
-          label: "Yes",
-          onClick: async () => {
-            setLoading(true);
-            try {
-              const { message } = await blockUnblockUserService(userId, action);
-              toast.success(message);
+    const actionFn = async () => {
+      setLoading(true);
+      try {
+        const { message } = await blockUnblockUserService(userId, action);
+        // toast.success(message);
 
-              // Update the users state to reflect the change
-              setUsers((prevUsers) =>
-                prevUsers.map((user) =>
-                  user.id === userId
-                    ? {
-                        ...user,
-                        block: action === "block",
-                        status: action === "block" ? "blocked" : "active",
-                      }
-                    : user
-                )
-              );
-            } catch (error) {
-              toast.error(`Failed to ${action} user: ${error.message}`);
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-        {
-          label: "No",
-          onClick: () => {},
-        },
-      ],
-    });
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.id === userId
+              ? {
+                  ...user,
+                  block: action === "block",
+                  status: action === "block" ? "blocked" : "active",
+                }
+              : user
+          )
+        );
+      } catch (error) {
+        toast.error(`Failed to ${action} user: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    confirmBlockUnblock(actionFn, null, isBlocked, "user");
   };
-
   const handleDeleteUser = async (userId) => {
     await confirmDelete(
       async () => {
         const message = await deleteUserById(userId);
         setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+        setPagination((prev) => ({
+          ...prev,
+          totalItems: prev.totalItems - 1,
+          totalPages: Math.ceil((prev.totalItems - 1) / prev.pageSize),
+        }));
         return message;
       },
       null,
       "user"
     );
   };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPagination((prev) => ({
+      ...prev,
+      pageSize: newSize,
+      currentPage: 1,
+    }));
+  };
+
   const filteredUsers = useMemo(() => {
     if (selectedUserType === "All User Type") return users;
     return users.filter(
@@ -255,8 +273,8 @@ const AllUsers = () => {
               className="btn btn-sm btn-primary me-2"
               title="Edit"
               onClick={() => handleEditUser(row.original.id)}
-              disabled={loading} // Disable button during loading
-              style={{ opacity: loading ? 0.6 : 1 }} // Visual feedback
+              disabled={loading}
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
               <FiEdit2 size={14} />
             </button>
@@ -286,13 +304,12 @@ const AllUsers = () => {
                 <FaUnlock size={14} />
               )}
             </button>
-
             <button
               className="btn btn-sm btn-danger"
               title="Delete"
               onClick={() => handleDeleteUser(row.original.id)}
-              disabled={loading} // Disable button during loading
-              style={{ opacity: loading ? 0.6 : 1 }} // Visual feedback
+              disabled={loading}
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
               <FiTrash2 size={14} />
             </button>
@@ -301,7 +318,7 @@ const AllUsers = () => {
         disableFilters: true,
       },
     ],
-    []
+    [loading]
   );
 
   const breadcrumbItems = [
@@ -378,56 +395,61 @@ const AllUsers = () => {
                 </div>
               )}
               <div
-                className="mb-3 d-flex align-items-center border-black"
+                className="mb-3 d-flex justify-content-between align-items-center border-black"
                 style={{ opacity: loading ? 0.6 : 1 }}
               >
-                <Dropdown
-                  isOpen={dropdownOpen}
-                  toggle={toggleDropdown}
-                  disabled={loading}
-                >
-                  <DropdownToggle
-                    caret
-                    style={{
-                      width: "200px",
-                      backgroundColor: "#f8f9fa",
-                      borderColor: "#dee2e6",
-                      color: "#495057",
-                      textAlign: "left",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
+                <div className="ms-auto">
+                  <Dropdown
+                    isOpen={dropdownOpen}
+                    toggle={toggleDropdown}
+                    disabled={loading}
                   >
-                    {selectedUserType}
-                  </DropdownToggle>
-                  <DropdownMenu
-                    style={{ maxHeight: "200px", overflowY: "auto" }}
-                  >
-                    <DropdownItem
-                      onClick={() => setSelectedUserType("All User Type")}
+                    <DropdownToggle
+                      caret
+                      style={{
+                        width: "200px",
+                        backgroundColor: "#f8f9fa",
+                        borderColor: "#dee2e6",
+                        color: "#495057",
+                        textAlign: "left",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
                     >
-                      All User Type
-                    </DropdownItem>
-                    {roles.map((role) => (
+                      {selectedUserType}
+                    </DropdownToggle>
+                    <DropdownMenu
+                      style={{ maxHeight: "200px", overflowY: "auto" }}
+                    >
                       <DropdownItem
-                        key={role.id}
-                        onClick={() => setSelectedUserType(role.name)}
+                        onClick={() => setSelectedUserType("All User Type")}
                       >
-                        {role.name}
+                        All User Type
                       </DropdownItem>
-                    ))}
-                  </DropdownMenu>
-                </Dropdown>
+                      {roles.map((role) => (
+                        <DropdownItem
+                          key={role.id}
+                          onClick={() => setSelectedUserType(role.name)}
+                        >
+                          {role.name}
+                        </DropdownItem>
+                      ))}
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
               </div>
 
               <TableContainer
                 columns={columns}
                 data={filteredUsers}
-                isPagination
-                iscustomPageSize
+                isPagination={true}
+                isCustomPageSize={true}
                 isBordered={false}
-                customPageSize={100}
+                customPageSize={pagination.pageSize}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
                 className="custom-header-css"
               />
             </CardBody>

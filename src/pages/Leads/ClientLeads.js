@@ -12,18 +12,21 @@ import {
   Button,
   Row,
   Col,
+  Badge,
+  Spinner,
 } from "reactstrap";
 import { useLocation } from "react-router-dom";
 import { FaFilter, FaUserTag, FaBoxes } from "react-icons/fa";
 import { FiEdit2, FiTrash2, FiRefreshCw } from "react-icons/fi";
 import ClientLeadModal from "../../components/Modals/ClientLeadModal";
 import { useNavigate } from "react-router-dom";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import {
   deleteLead,
   getAllClientLeads,
+  updateLeadStatus,
 } from "../../services/ClientleadService";
-import "react-confirm-alert/src/react-confirm-alert.css";
-import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import { toast } from "react-toastify";
 
 const ClientLeads = () => {
   const location = useLocation();
@@ -34,6 +37,7 @@ const ClientLeads = () => {
     searchText: "",
     client: "Choose Client...",
     vendor: "Choose Vendor...",
+    status: "all",
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -45,6 +49,7 @@ const ClientLeads = () => {
   const navigate = useNavigate();
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState("Choose Client...");
   const [selectedVendor, setSelectedVendor] = useState("Choose Vendor...");
   const [searchText, setSearchText] = useState("");
@@ -67,20 +72,21 @@ const ClientLeads = () => {
     try {
       setLoading(true);
       setError(null);
-
       const response = await getAllClientLeads(
         pagination.currentPage,
-        pagination.pageSize
+        pagination.pageSize,
+        currentFilter.orderId
       );
-      setLeads(response.data);
+      setLeads(response.data || []);
       setPagination((prev) => ({
         ...prev,
-        totalPages: response.totalPages,
-        totalItems: response.totalItems,
+        totalPages: response.totalPages || 1,
+        totalItems: response.totalItems || 0,
       }));
     } catch (err) {
       console.error("Fetch leads error:", err);
       setError(err.message);
+      toast.error("Failed to fetch leads");
     } finally {
       setLoading(false);
     }
@@ -100,15 +106,11 @@ const ClientLeads = () => {
 
   useEffect(() => {
     fetchLeads();
-  }, [
-    pagination.currentPage,
-    pagination.pageSize,
-    currentFilter.orderId,
-    currentFilter.searchText,
-  ]);
+  }, [pagination.currentPage, pagination.pageSize, currentFilter.orderId]);
 
   const toggleClientDropdown = () => setClientDropdownOpen((prev) => !prev);
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
+  const toggleStatusDropdown = () => setStatusDropdownOpen((prev) => !prev);
 
   const handleRowClick = (row) => {
     setSelectedLead(row.original);
@@ -135,8 +137,60 @@ const ClientLeads = () => {
     );
   };
 
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      setLoading(true);
+
+      // Optimistically update the local state
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead.id === id ? { ...lead, status: newStatus } : lead
+        )
+      );
+
+      const response = await updateLeadStatus(id, newStatus);
+      console.log("Update Lead Status Response:", response);
+      if (response.success) {
+        await fetchLeads(); // Refresh data from server to confirm
+        toast.success(`Lead status updated to ${newStatus}`);
+      } else {
+        throw new Error(response.message || "Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      // Revert optimistic update on error
+      await fetchLeads(); // Fetch latest data to revert any incorrect local changes
+      toast.error(`Failed to update status: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredLeads = useMemo(() => {
+    let filtered = [...leads];
+
+    if (currentFilter.orderId) {
+      const orderIdNum = Number(currentFilter.orderId);
+      filtered = filtered.filter((lead) => lead.orderId === orderIdNum);
+    }
+
+    if (currentFilter.status !== "all") {
+      filtered = filtered.filter(
+        (lead) => lead.status === currentFilter.status
+      );
+    }
+
+    return filtered.filter((lead) =>
+      Object.values(lead.leadData || {}).some((val) =>
+        String(val).toLowerCase().includes(searchText.toLowerCase())
+      )
+    );
+  }, [leads, searchText, currentFilter.orderId, currentFilter.status]);
+
   const clients = ["Client 1", "Client 2", "Client 3"];
   const vendors = ["Vendor 1", "Vendor 2", "Vendor 3"];
+  const statusOptions = ["all", "pending", "accepted", "rejected"];
+
   const columns = useMemo(
     () => [
       {
@@ -210,32 +264,78 @@ const ClientLeads = () => {
         ),
       },
       {
-        Header: "Reason",
-        accessor: "reason",
+        Header: "Status",
+        accessor: "status",
         disableFilters: true,
         width: 100,
-        Cell: ({ row, value }) => (
-          <div
-            style={{ cursor: "pointer" }}
-            onClick={() => handleRowClick(row)}
+        Cell: ({ value }) => (
+          <Badge
+            color={
+              value === "accepted"
+                ? "success"
+                : value === "rejected"
+                ? "danger"
+                : "secondary"
+            }
+            className="text-capitalize"
           >
             {value}
-          </div>
+          </Badge>
         ),
       },
       {
         Header: "Options",
         disableFilters: true,
-        Cell: () => (
-          <div className="d-flex gap-2">
-            <Button color="success" size="sm" className="px-3">
-              Accept
-            </Button>
-            <Button color="danger" size="sm" className="px-3">
-              Reject
-            </Button>
-          </div>
-        ),
+        Cell: ({ row }) => {
+          const [isUpdating, setIsUpdating] = useState(false);
+          const lead = row.original;
+
+          const handleStatusClick = async (newStatus) => {
+            setIsUpdating(true);
+            try {
+              await handleStatusUpdate(lead.id, newStatus);
+            } catch (error) {
+              // Error is already handled in handleStatusUpdate
+            } finally {
+              setIsUpdating(false);
+            }
+          };
+
+          return (
+            <div className="d-flex gap-2">
+              <Button
+                color="success"
+                size="sm"
+                className="px-3"
+                disabled={isUpdating || lead.status === "accepted"}
+                onClick={() => handleStatusClick("accepted")}
+              >
+                {isUpdating && lead.status === "pending" ? (
+                  <Spinner size="sm" />
+                ) : lead.status === "accepted" ? (
+                  "Accept"
+                ) : (
+                  "Accept"
+                )}
+              </Button>
+              <Button
+                color="danger"
+                size="sm"
+                className="px-3"
+                disabled={isUpdating || lead.status === "rejected"}
+                onClick={() => handleStatusClick("rejected")}
+              >
+                {isUpdating && lead.status === "pending" ? (
+                  <Spinner size="sm" />
+                ) : lead.status === "rejected" ? (
+                  "Reject"
+                ) : (
+                  "Reject"
+                )}
+              </Button>
+            </div>
+          );
+        },
         width: 150,
       },
       {
@@ -294,15 +394,19 @@ const ClientLeads = () => {
       <div className="page-content">
         <Container fluid>
           <Breadcrumbs title="ALL CLIENT" breadcrumbItems={breadcrumbItems} />
-
           <Card>
             <CardBody>
               {loading && <p>Loading leads...</p>}
               {error && <p className="text-danger">Error: {error}</p>}
-              {!loading && !error && (
+              {!loading && !error && filteredLeads.length === 0 && (
+                <p>
+                  No leads found for Order #{currentFilter.orderId || "All"}.
+                </p>
+              )}
+              {!loading && !error && filteredLeads.length > 0 && (
                 <>
                   <Row className="mb-3">
-                    <Col md={5}>
+                    <Col md={4}>
                       <Dropdown
                         isOpen={clientDropdownOpen}
                         toggle={toggleClientDropdown}
@@ -346,7 +450,7 @@ const ClientLeads = () => {
                         </DropdownMenu>
                       </Dropdown>
                     </Col>
-                    <Col md={5}>
+                    <Col md={4}>
                       <Dropdown
                         isOpen={vendorDropdownOpen}
                         toggle={toggleVendorDropdown}
@@ -390,7 +494,8 @@ const ClientLeads = () => {
                         </DropdownMenu>
                       </Dropdown>
                     </Col>
-                    <Col md={2}>
+
+                    <Col md={3}>
                       <Button
                         color="primary"
                         className="w-100 d-flex align-items-center justify-content-center"
@@ -403,7 +508,8 @@ const ClientLeads = () => {
                           console.log(
                             "Filter clicked with:",
                             selectedClient,
-                            selectedVendor
+                            selectedVendor,
+                            currentFilter.status
                           );
                         }}
                       >
@@ -413,7 +519,7 @@ const ClientLeads = () => {
                     </Col>
                   </Row>
 
-                  <div className="d-flex justify-content-between align-items-end mb-3">
+                  <div className="d-flex justify-content-end align-items-end mb-3">
                     <div>
                       <input
                         type="text"
@@ -427,7 +533,7 @@ const ClientLeads = () => {
 
                   <TableContainer
                     columns={columns || []}
-                    data={leads || []}
+                    data={filteredLeads || []}
                     isPagination={true}
                     iscustomPageSize={false}
                     isBordered={false}
@@ -447,6 +553,8 @@ const ClientLeads = () => {
         isOpen={isModalOpen}
         toggle={() => setIsModalOpen(!isModalOpen)}
         leadData={selectedLead}
+        onStatusUpdate={handleStatusUpdate}
+        refreshLeads={fetchLeads}
       />
     </React.Fragment>
   );

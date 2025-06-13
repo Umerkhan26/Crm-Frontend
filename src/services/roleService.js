@@ -46,8 +46,9 @@ export const updateRolePermissions = async (roleId, permissions) => {
   return response.json();
 };
 
-export const getAllRoles = async () => {
-  const response = await fetch(`${API_URL}/all`, {
+export const getAllRoles = async (params = { page: 1, limit: 10 }) => {
+  const { page = 1, limit = 10 } = params; // Destructure with defaults
+  const response = await fetch(`${API_URL}/all?page=${page}&limit=${limit}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -60,7 +61,6 @@ export const getAllRoles = async () => {
 
   return response.json();
 };
-
 export const deleteRole = async (roleId) => {
   try {
     const response = await fetch(`${API_URL}/delete/${roleId}`, {

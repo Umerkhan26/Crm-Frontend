@@ -17,13 +17,57 @@ import SendReferral from "../../pages/Referrals/SendReferrals";
 const SidebarContent = (props) => {
   const [pathName, setPathName] = useState(props.router.location.pathname);
   const metisRef = useRef(null);
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      initMenu();
-    }, 200);
+    const initMenuWithDelay = () => {
+      if (metisRef.current) {
+        metisRef.current.dispose();
+      }
+      metisRef.current = new MetisMenu("#side-menu");
+
+      // Check if we're coming from a campaign context
+      const fromCampaignContext = sessionStorage.getItem("fromCampaignContext");
+      const fromCampaignLink = sessionStorage.getItem("fromCampaignLink");
+
+      if (
+        fromCampaignContext ||
+        fromCampaignLink ||
+        (props.router.location.pathname === "/order-index" &&
+          props.router.location.search.includes("campaign="))
+      ) {
+        // Find the campaigns menu element
+        const campaignsMenu = document.getElementById("campaigns-menu");
+        if (campaignsMenu) {
+          // Manually activate the menu hierarchy
+          activateParentDropdown(campaignsMenu);
+        }
+
+        // Clear the flags
+        sessionStorage.removeItem("fromCampaignContext");
+        sessionStorage.removeItem("fromCampaignLink");
+      } else {
+        // Normal menu activation
+        const ul = document.getElementById("side-menu");
+        if (!ul) return;
+
+        const items = ul.getElementsByTagName("a");
+        let matchingMenuItem = null;
+
+        for (let i = 0; i < items.length; ++i) {
+          if (items[i].pathname === window.location.pathname) {
+            matchingMenuItem = items[i];
+            break;
+          }
+        }
+
+        if (matchingMenuItem) {
+          activateParentDropdown(matchingMenuItem);
+        }
+      }
+    };
+
+    const timer = setTimeout(initMenuWithDelay, 300);
     return () => clearTimeout(timer);
-  }, [props.router.location.pathname]);
+  }, [props.router.location.pathname, props.router.location.search]);
 
   useEffect(() => {
     if (props.router.location.pathname !== pathName) {
@@ -170,7 +214,11 @@ const SidebarContent = (props) => {
           {/* )} */}
 
           <li>
-            <Link to="/#" className="has-arrow waves-effect">
+            <Link
+              to="/#"
+              className="has-arrow waves-effect"
+              id="campaigns-menu"
+            >
               <i className="ri-broadcast-line"></i>
               <span className="ms-1">{props.t("Campaigns")}</span>
             </Link>

@@ -25,14 +25,16 @@ export const fetchCampaigns = async () => {
       throw new Error(result.message || "Failed to fetch campaigns.");
     }
 
-    const campaignNames = Object.keys(result);
+    // Access groupedCampaigns instead of result directly
+    const groupedCampaigns = result.groupedCampaigns || {};
+    const campaignNames = Object.keys(groupedCampaigns);
     if (campaignNames.length === 0) {
       throw new Error("No campaigns found in the response.");
     }
 
     const options = campaignNames
       .map((name) => {
-        const fields = result[name];
+        const fields = groupedCampaigns[name];
         if (!fields || fields.length === 0) {
           return null;
         }
@@ -52,7 +54,6 @@ export const fetchCampaigns = async () => {
     throw new Error(`Error fetching campaigns: ${error.message}`);
   }
 };
-
 // Create a new order
 export const createOrder = async (payload) => {
   try {

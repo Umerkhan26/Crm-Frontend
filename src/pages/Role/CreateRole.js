@@ -69,6 +69,9 @@ const componentPermissions = {
     create: false,
     edit: false,
     delete: false,
+    getByOrder: false, // new
+    getById: false, // new
+    updateStatus: false,
     // stateFilter: false,
   },
   Referrals: {
@@ -143,6 +146,9 @@ const permissionMap = {
   "ClientLead.create": "clientLead:create",
   "ClientLead.edit": "clientLead:update",
   "ClientLead.delete": "clientLead:delete",
+  "ClientLead.getByOrder": "clientLead:getByOrder",
+  "ClientLead.getById": "clientLead:getById",
+  "ClientLead.updateStatus": "clientLead:updateStatus",
 };
 
 const CreateRole = () => {

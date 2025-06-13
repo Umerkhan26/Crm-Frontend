@@ -41,10 +41,12 @@ import {
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import useBlockUnblockConfirmation from "../../components/Modals/useBlockUnblockConfirmation";
 
 const Allorders = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { confirmBlockUnblock } = useBlockUnblockConfirmation();
   const { confirmDelete } = useDeleteConfirmation();
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
@@ -173,8 +175,17 @@ const Allorders = () => {
           toast.success(
             `Order ${isBlocked ? "unblocked" : "blocked"} successfully`
           );
-          const data = await fetchAllOrders();
-          setOrdersData(data);
+          const response = await fetchAllOrders(
+            pagination.currentPage,
+            pagination.pageSize
+          );
+          setOrdersData(Array.isArray(response.data) ? response.data : []);
+          setPagination((prev) => ({
+            ...prev,
+            totalPages: response.totalPages || 1,
+            totalItems: response.totalItems || 0,
+            currentPage: response.currentPage || 1,
+          }));
         } catch (error) {
           toast.error(
             error.message ||
@@ -191,15 +202,24 @@ const Allorders = () => {
         await deleteOrder(orderId);
       },
       async () => {
-        const data = await fetchAllOrders();
-        setOrdersData(data);
+        const response = await fetchAllOrders(
+          pagination.currentPage,
+          pagination.pageSize
+        );
+        setOrdersData(Array.isArray(response.data) ? response.data : []);
+        setPagination((prev) => ({
+          ...prev,
+          totalPages: response.totalPages || 1,
+          totalItems: response.totalItems || 0,
+          currentPage: response.currentPage || 1,
+        }));
       },
       "order"
     );
   };
 
   const filteredOrders = useMemo(() => {
-    let filtered = ordersData;
+    let filtered = Array.isArray(ordersData) ? ordersData : [];
 
     if (selectedCampaign) {
       filtered = filtered.filter(
@@ -209,14 +229,25 @@ const Allorders = () => {
 
     switch (activeFilter) {
       case "open":
-        return filtered.filter((order) => !order.is_blocked);
+        filtered = filtered.filter((order) => !order.is_blocked);
+        break;
       case "complete":
-        return filtered.filter((order) => order.priority_level === "Onhold");
+        filtered = filtered.filter(
+          (order) => order.priority_level === "Onhold"
+        );
+        break;
       case "blocked":
-        return filtered.filter((order) => order.is_blocked);
+        filtered = filtered.filter((order) => order.is_blocked);
+        break;
       default:
-        return filtered;
+        break;
     }
+
+    return filtered.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+      return dateA - dateB;
+    });
   }, [ordersData, activeFilter, selectedCampaign]);
 
   const categories = [
@@ -225,6 +256,19 @@ const Allorders = () => {
   ];
   const vendors = ["Vendor2 Secok", "Junaid Tariq"];
 
+  const handleLeadSubmit = (leadResponse) => {
+    const orderId = leadResponse.order_id;
+    setOrdersData((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              remainingLeads: order.remainingLeads - 1,
+            }
+          : order
+      )
+    );
+  };
   const columns = useMemo(
     () => [
       {
@@ -243,7 +287,10 @@ const Allorders = () => {
           <div
             className="text-primary"
             style={{ cursor: "pointer" }}
-            onClick={() => navigate(`/lead-index?orderId=${row.original.id}`)}
+            onClick={() => {
+              sessionStorage.setItem("fromCampaignContext", "true");
+              navigate(`/lead-index?orderId=${row.original.id}`);
+            }}
           >
             {row.original.agent}
           </div>
@@ -542,7 +589,7 @@ const Allorders = () => {
       <AddLeadModal
         isOpen={modalOpen}
         toggle={() => setModalOpen(!modalOpen)}
-        onSubmit={(data) => console.log("Lead Submitted", data)}
+        onSubmit={handleLeadSubmit}
         selectedOrder={selectedOrder}
       />
 
