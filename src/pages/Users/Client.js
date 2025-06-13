@@ -78,14 +78,14 @@ const AllClient = () => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
-    address: "",
-    state: "",
-    email: "",
-  });
+  // const [formData, setFormData] = useState({
+  //   firstName: "",
+  //   lastName: "",
+  //   phoneNumber: "",
+  //   address: "",
+  //   state: "",
+  //   email: "",
+  // });
 
   // Toggle functions
   const toggleStateDropdown = () => setStateDropdownOpen((prev) => !prev);
@@ -97,19 +97,19 @@ const AllClient = () => {
   };
 
   // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
+  // };
 
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     // Here you would typically send the data to your API
-    console.log("Form submitted:", formData);
+    // console.log("Form submitted:", formData);
     if (selectedFile) {
       console.log("File selected:", selectedFile.name);
     }

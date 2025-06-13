@@ -78,15 +78,18 @@ export const createOrder = async (payload) => {
   }
 };
 
-export const fetchAllOrders = async () => {
+export const fetchAllOrders = async (page = 1, limit = 10) => {
   try {
     const token = getAuthToken();
-    const response = await fetch("http://localhost:3000/api/orders", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // send token here
-      },
-    });
+    const response = await fetch(
+      `${API_URL}/orders?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -94,7 +97,7 @@ export const fetchAllOrders = async () => {
     }
 
     const result = await response.json();
-    return result.data; // returns array of orders
+    return result; // returns the full paginated response
   } catch (error) {
     console.error("Error fetching orders:", error.message);
     throw error;
@@ -123,6 +126,30 @@ export const updateOrder = async (id, updatedData) => {
   }
 };
 
+export const setOrderBlockStatus = async (orderId, blockStatus) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_URL}/orders/${orderId}/block-status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ block: blockStatus }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update block status");
+    }
+
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "An error occurred");
+  }
+};
+
 export const deleteOrder = async (id) => {
   try {
     const response = await fetch(`${API_URL}/orders/${id}`, {
@@ -135,12 +162,21 @@ export const deleteOrder = async (id) => {
 
     if (!response.ok) {
       const errorData = await response.json();
+
+      // Check for MySQL foreign key error
+      if (
+        errorData.message &&
+        errorData.message.includes("foreign key constraint fails")
+      ) {
+        throw new Error("Cannot delete order — it is linked to a lead.");
+      }
+
       throw new Error(errorData.message || "Failed to delete order");
     }
 
     return await response.json();
   } catch (error) {
-    console.error("Error deleting order:", error);
+    console.error("Error deleting order:", error.message);
     throw error;
   }
 };

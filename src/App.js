@@ -20,9 +20,6 @@ import fakeBackend from "./helpers/AuthType/fakeBackend";
 import AppRoute from "./routes/route";
 import { ToastContainer } from "react-toastify";
 
-//Firebase helper
-// import { initFirebaseBackend } from "./helpers/firebase_helper";
-
 // Activating fake backend
 fakeBackend();
 
@@ -78,7 +75,7 @@ class App extends Component {
 						))}
 					</Routes>
 				</Router> */}
-
+        <ToastContainer position="top-right" autoClose={3000} />
         <Routes>
           {publicRoutes.map((route, idx) => (
             <Route
@@ -102,7 +99,6 @@ class App extends Component {
             />
           ))}
         </Routes>
-        <ToastContainer position="top-right" autoClose={3000} />
       </React.Fragment>
     );
   }

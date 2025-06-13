@@ -32,39 +32,35 @@ export const createCampaign = async (campaignData) => {
 };
 
 export const fetchCampaigns = async () => {
-  try {
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
+  if (!token) {
+    throw new Error("No token provided");
+  }
+  try {
     const response = await fetch(`${API_URL}/getAllCampaigns`, {
-      method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("API response:", data);
 
-    if (typeof data !== "object" || Array.isArray(data) || data === null) {
-      throw new Error("Unexpected API response format");
-    }
+    // Convert the object to a flat array of campaign objects
+    const campaigns = Object.values(data).flat();
 
-    return Object.entries(data).map(([campaignName, fields]) => {
-      const id =
-        Array.isArray(fields) && fields[0]?.id ? fields[0].id : campaignName;
-
-      return {
-        id,
-        campaignName,
-        parsedFields: fields,
-      };
-    });
+    return campaigns.map((campaign) => ({
+      id: campaign.id,
+      campaignName: campaign.campaignName,
+      parsedFields: campaign.fields ? JSON.parse(campaign.fields) : [],
+    }));
   } catch (error) {
-    console.error("Error fetching campaigns:", error.message);
+    console.error("Error fetching campaigns:", error);
     throw error;
   }
 };

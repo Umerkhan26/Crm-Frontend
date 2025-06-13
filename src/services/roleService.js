@@ -28,7 +28,6 @@ export const createRole = async (payload) => {
   return await response.json();
 };
 
-// Update role permissions
 export const updateRolePermissions = async (roleId, permissions) => {
   const response = await fetch(`${API_URL}/update/${roleId}`, {
     method: "PUT",
@@ -47,7 +46,6 @@ export const updateRolePermissions = async (roleId, permissions) => {
   return response.json();
 };
 
-// Fetch all roles with permissions
 export const getAllRoles = async () => {
   const response = await fetch(`${API_URL}/all`, {
     method: "GET",
@@ -61,4 +59,22 @@ export const getAllRoles = async () => {
   }
 
   return response.json();
+};
+
+export const deleteRole = async (roleId) => {
+  try {
+    const response = await fetch(`${API_URL}/delete/${roleId}`, {
+      method: "DELETE",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete role");
+    }
+
+    return { success: true, message: data.message };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };

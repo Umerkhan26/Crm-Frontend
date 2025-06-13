@@ -17,7 +17,7 @@ import {
   Col,
 } from "reactstrap";
 
-const LeadDetailModal = ({ isOpen, toggle, leadData }) => {
+const ClientLeadModal = ({ isOpen, toggle, leadData }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [notes, setNotes] = useState("");
   const [reminder, setReminder] = useState({
@@ -42,9 +42,9 @@ const LeadDetailModal = ({ isOpen, toggle, leadData }) => {
   };
 
   // Get all fields from fullLeadData, excluding any fields you don't want to display
-  const leadFields = leadData?.fullLeadData
-    ? Object.entries(leadData.fullLeadData).filter(
-        ([key]) => !["reason", "status"].includes(key) // Exclude fields already in the table
+  const leadFields = leadData?.leadData
+    ? Object.entries(leadData.leadData).filter(
+        ([key]) => !["reason", "status"].includes(key)
       )
     : [];
 
@@ -205,4 +205,4 @@ const LeadDetailModal = ({ isOpen, toggle, leadData }) => {
   );
 };
 
-export default LeadDetailModal;
+export default ClientLeadModal;

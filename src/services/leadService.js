@@ -73,13 +73,16 @@ export const updateLead = async (id, updatedData) => {
       body: JSON.stringify(updatedData),
     });
 
+    const responseData = await response.json(); // Parse the response
+    console.log("Update lead response:", responseData); // Log the parsed response
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update lead");
+      throw new Error(responseData.message || "Failed to update lead");
     }
 
-    return await response.json();
+    return responseData;
   } catch (error) {
+    console.error("Error updating lead:", error);
     throw error;
   }
 };

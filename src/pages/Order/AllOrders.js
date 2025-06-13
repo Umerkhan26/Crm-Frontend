@@ -22,6 +22,7 @@ import {
   FaPlus,
   FaFileImport,
   FaUnlock,
+  FaLock,
   FaList,
   FaFolderOpen,
   FaCheckCircle,
@@ -31,13 +32,20 @@ import {
 import { FiEdit2 } from "react-icons/fi";
 import AddLeadModal from "../../components/Modals/AddLeadModal";
 import ImportLeadsModal from "../../components/Modals/ImportLeadsModal";
-import { useNavigate } from "react-router-dom";
-import { deleteOrder, fetchAllOrders } from "../../services/orderService";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  deleteOrder,
+  fetchAllOrders,
+  setOrderBlockStatus,
+} from "../../services/orderService";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const Allorders = () => {
   const navigate = useNavigate();
-  // State for dropdowns and filters
+  const location = useLocation();
+  const { confirmDelete } = useDeleteConfirmation();
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] =
@@ -49,6 +57,13 @@ const Allorders = () => {
   const [ordersData, setOrdersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 10,
+  });
 
   const toggleModal = (order = null) => {
     setSelectedOrder(order);
@@ -58,24 +73,41 @@ const Allorders = () => {
   const toggleCategoryDropdown = () => setCategoryDropdownOpen((prev) => !prev);
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
 
-  const handleSubmit = (formData) => {
-    console.log("Form submitted:", formData);
-  };
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const campaignId = queryParams.get("campaign");
+
+    if (!campaignId) {
+      setSelectedCampaign(null);
+      setActiveFilter("all");
+    } else {
+      setSelectedCampaign(campaignId);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        const data = await fetchAllOrders();
-        console.log("all orders", data);
-        setOrdersData(data);
+        const response = await fetchAllOrders(
+          pagination.currentPage,
+          pagination.pageSize
+        );
+        setOrdersData(response.data);
+        setPagination((prev) => ({
+          ...prev,
+          totalPages: response.totalPages,
+          totalItems: response.totalItems,
+        }));
+        console.log("All order", response);
       } catch (error) {
         console.error("Failed to load orders", error);
+        toast.error("Failed to load orders");
       } finally {
         setLoading(false);
       }
     };
     loadOrders();
-  }, []);
+  }, [pagination.currentPage, pagination.pageSize]);
 
   const handleImport = (file) => {
     console.log("Importing file:", file.name);
@@ -85,19 +117,107 @@ const Allorders = () => {
     navigate("/create-order", { state: { editData: order } });
   };
 
-  // Filter orders
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPagination((prev) => ({
+      ...prev,
+      pageSize: newSize,
+      currentPage: 1,
+    }));
+  };
+
+  const handleBlockUnblock = async (orderId, isBlocked) => {
+    Swal.fire({
+      title: `Confirm ${isBlocked ? "Unblock" : "Block"}`,
+      html: `
+        <style>
+          .swal2-popup {
+            width: 230px !important;
+            height:180px !important;
+            padding: 10px !important;
+            font-size: 14px !important;
+          }
+          .swal2-title {
+            font-size: 18px !important;
+          }
+          .swal2-html-container {
+            font-size: 14px !important;
+          }
+          .swal2-actions {
+            margin-top: 10px !important;
+          }
+          .swal2-confirm,
+          .swal2-cancel {
+            padding: 5px 10px !important;
+            font-size: 14px !important;
+          }
+        </style>
+        <p style="color: ${
+          isBlocked ? "green" : "red"
+        };">Are you sure you want to ${
+        isBlocked ? "unblock" : "block"
+      } this order?</p>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: isBlocked ? "#3085d6" : "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: `Yes, ${isBlocked ? "Unblock" : "Block"}`,
+      cancelButtonText: "No, Cancel",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await setOrderBlockStatus(orderId, !isBlocked);
+          toast.success(
+            `Order ${isBlocked ? "unblocked" : "blocked"} successfully`
+          );
+          const data = await fetchAllOrders();
+          setOrdersData(data);
+        } catch (error) {
+          toast.error(
+            error.message ||
+              `Failed to ${isBlocked ? "unblock" : "block"} order`
+          );
+        }
+      }
+    });
+  };
+
+  const handleDelete = async (orderId) => {
+    await confirmDelete(
+      async () => {
+        await deleteOrder(orderId);
+      },
+      async () => {
+        const data = await fetchAllOrders();
+        setOrdersData(data);
+      },
+      "order"
+    );
+  };
+
   const filteredOrders = useMemo(() => {
+    let filtered = ordersData;
+
+    if (selectedCampaign) {
+      filtered = filtered.filter(
+        (order) => order.campaign_id == selectedCampaign
+      );
+    }
+
     switch (activeFilter) {
       case "open":
-        return ordersData.filter((order) => order.status === "Active");
+        return filtered.filter((order) => !order.is_blocked);
       case "complete":
-        return ordersData.filter((order) => order.status === "Completed");
+        return filtered.filter((order) => order.priority_level === "Onhold");
       case "blocked":
-        return ordersData.filter((order) => order.status === "Blocked");
+        return filtered.filter((order) => order.is_blocked);
       default:
-        return ordersData;
+        return filtered;
     }
-  }, [ordersData, activeFilter]);
+  }, [ordersData, activeFilter, selectedCampaign]);
 
   const categories = [
     "Callback -Final Expense",
@@ -105,149 +225,142 @@ const Allorders = () => {
   ];
   const vendors = ["Vendor2 Secok", "Junaid Tariq"];
 
-  const handleDelete = async (orderId) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      try {
-        await deleteOrder(orderId);
-        toast.success("Order deleted successfully");
+  const columns = useMemo(
+    () => [
+      {
+        Header: "Order Id",
+        accessor: "",
+        disableFilters: true,
+        width: 60,
+        Cell: ({ row }) => <div>{row.index + 1}</div>,
+      },
+      {
+        Header: "Agent Name",
+        accessor: "agent",
+        disableFilters: true,
+        width: 100,
+        Cell: ({ row }) => (
+          <div
+            className="text-primary"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate(`/lead-index?orderId=${row.original.id}`)}
+          >
+            {row.original.agent}
+          </div>
+        ),
+      },
+      {
+        Header: "Options",
+        disableFilters: true,
+        Cell: (cellProps) => (
+          <ButtonGroup vertical className="w-100">
+            <Button
+              color="primary"
+              size="sm"
+              className="d-flex align-items-center justify-content-center text-nowrap mb-2"
+              onClick={() => toggleModal(cellProps.row.original)}
+            >
+              <FaPlus className="me-1" /> Add Lead
+            </Button>
+            <Button
+              color="success"
+              size="sm"
+              className="d-flex align-items-center justify-content-center text-nowrap"
+              onClick={toggleImportModal}
+            >
+              <FaFileImport className="me-1" /> Import
+            </Button>
+          </ButtonGroup>
+        ),
+        width: 200,
+      },
+      {
+        Header: "Leads Requested",
+        accessor: "lead_requested",
+        disableFilters: true,
+        width: 40,
+      },
+      {
+        Header: "Remaining Leads",
+        accessor: "remainingLeads",
+        disableFilters: true,
+        width: 20,
+      },
+      {
+        Header: "Notes & Area",
+        accessor: "notes",
+        disableFilters: true,
+        Cell: ({ row }) => (
+          <div
+            className="text-truncate"
+            style={{ maxWidth: "150px" }}
+            title={row.original.notes}
+          >
+            {row.original.notes}
+          </div>
+        ),
+        width: 150,
+      },
 
-        // Refresh the orders list
-        const data = await fetchAllOrders();
-        setOrdersData(data);
-      } catch (error) {
-        toast.error(error.message || "Failed to delete order");
-      }
-    }
-  };
-
-  const columns = useMemo(() => [
-    {
-      Header: "Order Id",
-      accessor: "",
-      disableFilters: true,
-      width: 100,
-      Cell: ({ row }) => <div>{row.index + 1}</div>,
-    },
-    {
-      Header: "Agent Name",
-      accessor: "agent",
-      disableFilters: true,
-      width: 120,
-    },
-    {
-      Header: "Options",
-      disableFilters: true,
-      Cell: (cellProps) => (
-        <ButtonGroup vertical className="w-100">
-          <Button
-            color="primary"
-            size="sm"
-            className="d-flex align-items-center justify-content-center text-nowrap  mb-2"
-            onClick={() => toggleModal(cellProps.row.original)}
-          >
-            <FaPlus className="me-1" /> Add Lead
-          </Button>
-          <Button
-            color="success"
-            size="sm"
-            className="d-flex align-items-center justify-content-center text-nowrap"
-            onClick={toggleImportModal}
-          >
-            <FaFileImport className="me-1" /> Import
-          </Button>
-        </ButtonGroup>
-      ),
-      width: 150, // Reduced width
-    },
-    {
-      Header: "Leads Requested",
-      accessor: "lead_requested",
-      disableFilters: true,
-      width: 100,
-    },
-    {
-      Header: "Remaining Leads",
-      accessor: "remainingLeads",
-      disableFilters: true,
-      width: 100,
-    },
-    // {
-    //   Header: "Vendor",
-    //   disableFilters: true,
-    //   Cell: ({ row }) => <div>{row.original.vendor}</div>,
-    //   width: 120,
-    // },
-    {
-      Header: "Notes & Area",
-      accessor: "notes",
-      disableFilters: true,
-      Cell: ({ row }) => (
-        <div
-          className="text-truncate"
-          style={{ maxWidth: "150px" }}
-          title={row.original.notes}
-        >
-          {row.original.notes}
-        </div>
-      ),
-      width: 150,
-    },
-    // {
-    //   Header: "Status",
-    //   accessor: "status",
-    //   disableFilters: true,
-    //   Cell: ({ value }) => (
-    //     <Badge
-    //       color={
-    //         value === "Active"
-    //         ? "success"
-    //         : value === "Completed"
-    //         ? "primary"
-    //         : "danger"
-    //       }
-    //     >
-    //       {value}
-    //     </Badge>
-    //   ),
-    //   width: 100,
-    // },
-
-    {
-      Header: "Status",
-      accessor: "status",
-      disableFilters: true,
-      Cell: () => <Badge color="success">Active</Badge>,
-      width: 100,
-    },
-    {
-      Header: "Action",
-      disableFilters: true,
-      Cell: ({ row }) => (
-        <div className="d-flex gap-2">
-          <Button
-            color="primary"
-            size="sm"
-            className="px-2 py-1"
-            onClick={() => handleEdit(row.original)}
-          >
-            <FiEdit2 size={14} />
-          </Button>
-          <Button color="secondary" size="sm" className="px-2 py-1">
-            <FaUnlock size={14} />
-          </Button>
-          <Button
-            color="danger"
-            size="sm"
-            className="px-2 py-1"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <FaTrash size={14} />
-          </Button>
-        </div>
-      ),
-      width: 120,
-    },
-  ]);
+      {
+        Header: "Priority Level",
+        accessor: "priority_level",
+        disableFilters: true,
+        width: 60,
+      },
+      {
+        Header: "Status",
+        accessor: "is_blocked",
+        disableFilters: true,
+        Cell: ({ value }) => (
+          <Badge color={value ? "danger" : "success"}>
+            {value ? "Blocked" : "Active"}
+          </Badge>
+        ),
+        width: 100,
+      },
+      {
+        Header: "Action",
+        disableFilters: true,
+        Cell: ({ row }) => (
+          <div className="d-flex gap-2">
+            <Button
+              color="primary"
+              size="sm"
+              className="px-2 py-1"
+              onClick={() => handleEdit(row.original)}
+            >
+              <FiEdit2 size={14} />
+            </Button>
+            <Button
+              color={row.original.is_blocked ? "danger" : "secondary"}
+              size="sm"
+              className="px-2 py-1"
+              onClick={() =>
+                handleBlockUnblock(row.original.id, row.original.is_blocked)
+              }
+            >
+              {row.original.is_blocked ? (
+                <FaLock size={14} />
+              ) : (
+                <FaUnlock size={14} />
+              )}
+            </Button>
+            <Button
+              color="danger"
+              size="sm"
+              className="px-2 py-1"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <FaTrash size={14} />
+            </Button>
+          </div>
+        ),
+        width: 120,
+      },
+    ],
+    []
+  );
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/" },
@@ -261,14 +374,18 @@ const Allorders = () => {
         <Container fluid>
           <Breadcrumbs title="ALL ORDERS" breadcrumbItems={breadcrumbItems} />
 
-          {/* Filter Buttons Row */}
           <Row className="mb-3">
             <Col md={12}>
-              <div className="d-flex w-100 gap-2">
+              <div className="d-flex w-80 gap-2">
                 <Button
                   color={activeFilter === "all" ? "primary" : "light"}
                   onClick={() => setActiveFilter("all")}
                   className="flex-fill d-flex align-items-center justify-content-center gap-2"
+                  style={{
+                    fontSize: "0.85rem",
+                    padding: "6px 6px",
+                    minHeight: "36px",
+                  }}
                 >
                   <FaList /> All Orders
                 </Button>
@@ -276,6 +393,11 @@ const Allorders = () => {
                   color={activeFilter === "open" ? "primary" : "light"}
                   onClick={() => setActiveFilter("open")}
                   className="flex-fill d-flex align-items-center justify-content-center gap-2"
+                  style={{
+                    fontSize: "0.85rem",
+                    padding: "6px 6px",
+                    minHeight: "36px",
+                  }}
                 >
                   <FaFolderOpen /> Open Orders
                 </Button>
@@ -283,6 +405,11 @@ const Allorders = () => {
                   color={activeFilter === "complete" ? "primary" : "light"}
                   onClick={() => setActiveFilter("complete")}
                   className="flex-fill d-flex align-items-center justify-content-center gap-2"
+                  style={{
+                    fontSize: "0.85rem",
+                    padding: "6px 6px",
+                    minHeight: "36px",
+                  }}
                 >
                   <FaCheckCircle /> Complete Orders
                 </Button>
@@ -290,6 +417,11 @@ const Allorders = () => {
                   color={activeFilter === "blocked" ? "primary" : "light"}
                   onClick={() => setActiveFilter("blocked")}
                   className="flex-fill d-flex align-items-center justify-content-center gap-2"
+                  style={{
+                    fontSize: "0.85rem",
+                    padding: "6px 6px",
+                    minHeight: "20px",
+                  }}
                 >
                   <FaBan /> Blocked Orders
                 </Button>
@@ -299,7 +431,6 @@ const Allorders = () => {
 
           <Card>
             <CardBody>
-              {/* Category and Vendor Dropdowns */}
               <Row className="mb-3">
                 <Col md={5}>
                   <Dropdown
@@ -313,6 +444,9 @@ const Allorders = () => {
                         backgroundColor: "#f8f9fa",
                         borderColor: "#dee2e6",
                         color: "#495057",
+                        fontSize: "0.85rem",
+                        padding: "6px 10px",
+                        minHeight: "36px",
                       }}
                     >
                       <div className="d-flex align-items-center">
@@ -354,6 +488,9 @@ const Allorders = () => {
                         backgroundColor: "#f8f9fa",
                         borderColor: "#dee2e6",
                         color: "#495057",
+                        fontSize: "0.85rem",
+                        padding: "6px 10px",
+                        minHeight: "36px",
                       }}
                     >
                       <div className="d-flex align-items-center">
@@ -388,30 +525,25 @@ const Allorders = () => {
               <TableContainer
                 columns={columns || []}
                 data={filteredOrders || []}
-                isPagination={false}
+                isPagination={true}
                 iscustomPageSize={false}
                 isBordered={false}
-                customPageSize={10}
+                customPageSize={pagination.pageSize}
                 className="custom-table"
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
               />
             </CardBody>
           </Card>
         </Container>
       </div>
 
-      {/* Lead Form Modal */}
       <AddLeadModal
         isOpen={modalOpen}
         toggle={() => setModalOpen(!modalOpen)}
         onSubmit={(data) => console.log("Lead Submitted", data)}
         selectedOrder={selectedOrder}
-        template={{
-          agent: "",
-          campaign_id: "",
-          state: "",
-          priority_level: "",
-          start_date: "", // will be rendered as a date input
-        }}
       />
 
       <ImportLeadsModal

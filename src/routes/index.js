@@ -57,9 +57,8 @@ import EmailNotification from "../pages/Setting/EmailNotification";
 import ActivityLog from "../pages/Setting/ActivityLog";
 import SystemSettingsForm from "../pages/Setting/SystemSettingsForm";
 import RegisterUser from "../pages/Users/Regestration Form";
-import PermissionManager from "../pages/Role/Role";
-import CreateRole from "../pages/Role/Role";
 import AllRole from "../pages/Role/AllRole";
+import CreateRole from "../pages/Role/CreateRole";
 
 const authProtectedRoutes = [
   // Tables

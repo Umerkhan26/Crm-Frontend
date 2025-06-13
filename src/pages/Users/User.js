@@ -10,51 +10,66 @@ import {
   Badge,
 } from "reactstrap";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
-import { FaUnlock } from "react-icons/fa";
+import { FaLock, FaUnlock } from "react-icons/fa";
+import { blockOrUnblockUser as blockUnblockUserService } from "../../services/auth";
+
 import { deleteUserById, getAllUsers, getUserById } from "../../services/auth";
 import TableContainer from "../../components/Common/TableContainer";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 import UserDetailsModal from "../../components/Modals/UserDetailsModal";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { confirmAlert } from "react-confirm-alert";
+import "react-confirm-alert/src/react-confirm-alert.css";
+import { ClipLoader } from "react-spinners";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import { getAllRoles } from "../../services/roleService";
 
 const AllUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedUserType, setSelectedUserType] = useState("All User Type");
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const { confirmDelete } = useDeleteConfirmation();
+
   const navigate = useNavigate();
 
   const toggleDropdown = () => setDropdownOpen((prevState) => !prevState);
   const toggleModal = () => setIsModalOpen((prev) => !prev);
 
-  // const hasPermission = (actionName) => {
-  //   const currentUser = JSON.parse(localStorage.getItem("authUser"));
-  //   return currentUser?.role?.permissions?.some(
-  //     (perm) => perm.name === actionName
-  //   );
-  // };
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const usersData = await getAllUsers();
+        const [usersData, rolesResponse] = await Promise.all([
+          getAllUsers(),
+          getAllRoles(),
+        ]);
+
+        const normalizedRoles = Array.isArray(rolesResponse)
+          ? rolesResponse
+          : rolesResponse?.roles || [];
+
         setUsers(usersData);
-        console.log("all user", usersData);
+        setRoles(normalizedRoles);
+        console.log("All users:", usersData);
       } catch (error) {
         setError(error.message);
-        console.error("Error fetching users:", error);
+        console.error("Error fetching users or roles:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleLoginClick = async (userId) => {
+    setLoading(true);
     try {
       const response = await getUserById(userId);
       const userData = response.user;
@@ -63,61 +78,110 @@ const AllUsers = () => {
       console.log("Specific user details", userData);
     } catch (err) {
       console.error("Failed to fetch user:", err);
+      toast.error("Failed to fetch user details.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditUser = async (userId) => {
-    // if (!hasPermission("user:update")) {
-    //   toast.error("You do not have permission to edit users.");
-    //   return;
-    // }
+    setLoading(true);
     try {
       const user = await getUserById(userId);
       console.log("User data for edit:", user);
-      toast.success("User Edited successfully");
       navigate("/user-register", { state: { user } });
     } catch (err) {
       console.error("Failed to fetch user for edit:", err);
       toast.error("Failed to load user data for editing.");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleBlockOrUnblock = async (userId, isBlocked) => {
+    const action = isBlocked ? "unblock" : "block";
+
+    confirmAlert({
+      title: `Confirm ${action}`,
+      message: `Are you sure you want to ${action} this user?`,
+      buttons: [
+        {
+          label: "Yes",
+          onClick: async () => {
+            setLoading(true);
+            try {
+              const { message } = await blockUnblockUserService(userId, action);
+              toast.success(message);
+
+              // Update the users state to reflect the change
+              setUsers((prevUsers) =>
+                prevUsers.map((user) =>
+                  user.id === userId
+                    ? {
+                        ...user,
+                        block: action === "block",
+                        status: action === "block" ? "blocked" : "active",
+                      }
+                    : user
+                )
+              );
+            } catch (error) {
+              toast.error(`Failed to ${action} user: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+        {
+          label: "No",
+          onClick: () => {},
+        },
+      ],
+    });
   };
 
   const handleDeleteUser = async (userId) => {
-    // if (!hasPermission("user:delete")) {
-    //   toast.error("You do not have permission to delete users.");
-    //   return;
-    // }
-    try {
-      const message = await deleteUserById(userId);
-      console.log("deleting user", message);
-      toast.success(message);
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
-    } catch (error) {
-      toast.error("Failed to delete user: " + error.message);
-    }
+    await confirmDelete(
+      async () => {
+        const message = await deleteUserById(userId);
+        setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+        return message;
+      },
+      null,
+      "user"
+    );
   };
-
   const filteredUsers = useMemo(() => {
     if (selectedUserType === "All User Type") return users;
     return users.filter(
-      (user) => user.userrole === selectedUserType.toLowerCase()
+      (user) =>
+        user.role?.name?.toLowerCase() === selectedUserType.toLowerCase()
     );
   }, [users, selectedUserType]);
 
   const columns = useMemo(
     () => [
       {
-        Header: "UserImage",
-        accessor: "useruimage",
-        Cell: () => (
-          <img
-            src={"https://randomuser.me/api/portraits/men/1.jpg"}
-            alt="User"
-            width="40"
-            height="40"
-            style={{ borderRadius: "50%" }}
-          />
-        ),
+        Header: "User Image",
+        accessor: "userImage",
+        Cell: ({ row }) => {
+          const imageUrl = row.original.userImage?.trim()
+            ? row.original.userImage
+            : "https://randomuser.me/api/portraits/men/1.jpg";
+          return (
+            <img
+              src={imageUrl}
+              alt="User"
+              width="40"
+              height="40"
+              style={{
+                borderRadius: "50%",
+                objectFit: "cover",
+                objectPosition: "top",
+              }}
+            />
+          );
+        },
         disableFilters: true,
       },
       {
@@ -140,16 +204,7 @@ const AllUsers = () => {
         accessor: "role.name",
         disableFilters: true,
         Cell: ({ value }) => (
-          <Badge
-            color={
-              value === "admin"
-                ? "primary"
-                : value === "vendor"
-                ? "success"
-                : "info"
-            }
-            className="text-capitalize"
-          >
+          <Badge color={"success"} className="text-capitalize">
             {value}
           </Badge>
         ),
@@ -166,9 +221,11 @@ const AllUsers = () => {
               padding: 0,
               margin: 0,
               color: "#0d6efd",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               font: "inherit",
+              opacity: loading ? 0.6 : 1,
             }}
+            disabled={loading}
           >
             User Detail
           </button>
@@ -177,11 +234,15 @@ const AllUsers = () => {
       },
       {
         Header: "Status",
-        accessor: "block",
+        accessor: "status",
         disableFilters: true,
         Cell: ({ value }) => (
-          <span className={`badge ${value ? "bg-danger" : "bg-success"}`}>
-            {value ? "Blocked" : "Active"}
+          <span
+            className={`badge ${
+              value === "blocked" ? "bg-danger" : "bg-success"
+            }`}
+          >
+            {value === "blocked" ? "Blocked" : "Active"}
           </span>
         ),
       },
@@ -194,21 +255,44 @@ const AllUsers = () => {
               className="btn btn-sm btn-primary me-2"
               title="Edit"
               onClick={() => handleEditUser(row.original.id)}
-              // disabled={!hasPermission("edit_user")}
+              disabled={loading} // Disable button during loading
+              style={{ opacity: loading ? 0.6 : 1 }} // Visual feedback
             >
               <FiEdit2 size={14} />
             </button>
             <button
-              className="btn btn-sm btn-secondary me-2"
-              title="Unlock"
-              onClick={() => console.log("Unlock user:", row.original.id)}
+              className={`btn btn-sm ${
+                row.original.status === "blocked"
+                  ? "btn-danger"
+                  : "btn-secondary"
+              } me-2`}
+              title={
+                row.original.status === "blocked"
+                  ? "Unblock User"
+                  : "Block User"
+              }
+              onClick={() =>
+                handleBlockOrUnblock(
+                  row.original.id,
+                  row.original.status === "blocked"
+                )
+              }
+              disabled={loading}
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
-              <FaUnlock size={14} />
+              {row.original.status === "blocked" ? (
+                <FaLock size={14} />
+              ) : (
+                <FaUnlock size={14} />
+              )}
             </button>
+
             <button
               className="btn btn-sm btn-danger"
               title="Delete"
               onClick={() => handleDeleteUser(row.original.id)}
+              disabled={loading} // Disable button during loading
+              style={{ opacity: loading ? 0.6 : 1 }} // Visual feedback
             >
               <FiTrash2 size={14} />
             </button>
@@ -233,11 +317,17 @@ const AllUsers = () => {
           <Breadcrumbs title="ALL USER" breadcrumbItems={breadcrumbItems} />
           <Card>
             <CardBody>
-              <div className="text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p>Loading users...</p>
+              <div
+                className="d-flex justify-content-center align-items-center"
+                style={{ minHeight: "200px" }}
+              >
+                <ClipLoader
+                  color="#5664d2"
+                  size={50}
+                  loading={loading}
+                  aria-label="Loading Spinner"
+                />
+                <span className="ms-2">Loading users...</span>
               </div>
             </CardBody>
           </Card>
@@ -267,9 +357,35 @@ const AllUsers = () => {
         <Container fluid>
           <Breadcrumbs title="ALL USER" breadcrumbItems={breadcrumbItems} />
           <Card>
-            <CardBody>
-              <div className="mb-3 d-flex align-items-center border-black">
-                <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
+            <CardBody style={{ overflowX: "auto" }}>
+              {loading && (
+                <div
+                  className="d-flex justify-content-center align-items-center"
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <ClipLoader
+                    color="#5664d2"
+                    size={40}
+                    loading={loading}
+                    aria-label="Loading Spinner"
+                  />
+                  <span className="ms-2">Processing...</span>
+                </div>
+              )}
+              <div
+                className="mb-3 d-flex align-items-center border-black"
+                style={{ opacity: loading ? 0.6 : 1 }}
+              >
+                <Dropdown
+                  isOpen={dropdownOpen}
+                  toggle={toggleDropdown}
+                  disabled={loading}
+                >
                   <DropdownToggle
                     caret
                     style={{
@@ -286,28 +402,21 @@ const AllUsers = () => {
                     {selectedUserType}
                   </DropdownToggle>
                   <DropdownMenu
-                    style={{
-                      width: "200px",
-                      backgroundColor: "#f8f9fa",
-                      borderColor: "#dee2e6",
-                    }}
+                    style={{ maxHeight: "200px", overflowY: "auto" }}
                   >
-                    {["All User Type", "Vendor", "Client", "Admin"].map(
-                      (type) => (
-                        <DropdownItem
-                          key={type}
-                          onClick={() => setSelectedUserType(type)}
-                          style={{
-                            backgroundColor:
-                              selectedUserType === type
-                                ? "#e9ecef"
-                                : "transparent",
-                          }}
-                        >
-                          {type}
-                        </DropdownItem>
-                      )
-                    )}
+                    <DropdownItem
+                      onClick={() => setSelectedUserType("All User Type")}
+                    >
+                      All User Type
+                    </DropdownItem>
+                    {roles.map((role) => (
+                      <DropdownItem
+                        key={role.id}
+                        onClick={() => setSelectedUserType(role.name)}
+                      >
+                        {role.name}
+                      </DropdownItem>
+                    ))}
                   </DropdownMenu>
                 </Dropdown>
               </div>
@@ -318,7 +427,7 @@ const AllUsers = () => {
                 isPagination
                 iscustomPageSize
                 isBordered={false}
-                customPageSize={10}
+                customPageSize={100}
                 className="custom-header-css"
               />
             </CardBody>

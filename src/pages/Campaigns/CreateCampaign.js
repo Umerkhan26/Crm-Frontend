@@ -16,9 +16,11 @@ import {
   ModalFooter,
 } from "reactstrap";
 import styled from "styled-components";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { createCampaign, updateCampaign } from "../../services/campaignService";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import Swal from "sweetalert2";
 
 const ReadOnlyInput = styled(Input)`
   background-color: #f8f9fa;
@@ -28,6 +30,17 @@ const ReadOnlyInput = styled(Input)`
   &:focus {
     border-color: #ced4da;
     box-shadow: none;
+  }
+`;
+
+const EditableInput = styled(Input)`
+  background-color: #ffffff;
+  cursor: text;
+  opacity: 1;
+
+  &:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
   }
 `;
 
@@ -55,48 +68,68 @@ const StyledDeleteButton = styled.button`
 
 const CreateCampaign = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const editData = location.state?.editData;
+  const { confirmDelete } = useDeleteConfirmation();
 
   const [campaignName, setCampaignName] = useState(editData?.name || "");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Define default columns that should not be editable
   const defaultColumns = [
     {
       name: "Agent Name",
       slug: "agent_name",
       type: "text",
       defaultValue: "Default",
+      isDefault: true,
     },
     {
       name: "First Name",
       slug: "first_name",
       type: "text",
       defaultValue: "Default",
+      isDefault: true,
     },
     {
       name: "Last Name",
       slug: "last_name",
       type: "text",
       defaultValue: "Default",
+      isDefault: true,
     },
     {
       name: "Phone Number",
       slug: "phone_number",
       type: "text",
       defaultValue: "Default",
+      isDefault: true,
     },
-    { name: "Date", slug: "date", type: "date", defaultValue: "2025-04-21" },
-    { name: "State", slug: "state", type: "text", defaultValue: "TX" },
+    {
+      name: "Date",
+      slug: "date",
+      type: "date",
+      defaultValue: "2025-04-21",
+      isDefault: true,
+    },
+    {
+      name: "State",
+      slug: "state",
+      type: "text",
+      defaultValue: "TX",
+      isDefault: true,
+    },
   ];
 
   const [columns, setColumns] = useState(() => {
     if (editData) {
       const editColumns = editData.columns || [];
       const defaultColumnNames = defaultColumns.map((col) => col.name);
-      const additionalColumns = editColumns.filter(
-        (col) => !defaultColumnNames.includes(col.name)
-      );
-      return [...defaultColumns, ...additionalColumns];
+      const additionalColumns = editColumns.map((col) => ({
+        ...col,
+        isDefault: defaultColumnNames.includes(col.name),
+      }));
+      return additionalColumns;
     }
     return defaultColumns;
   });
@@ -106,7 +139,8 @@ const CreateCampaign = () => {
     slug: "",
     type: "text",
     defaultValue: "",
-    options: "Option 1 | Option 2",
+    options: "",
+    isDefault: false,
   });
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -124,6 +158,9 @@ const CreateCampaign = () => {
       ...(field === "name"
         ? { slug: value.toLowerCase().replace(/\s+/g, "_") }
         : {}),
+      ...(field === "type" && ["checkbox", "radio", "dropdown"].includes(value)
+        ? { defaultValue: value === "checkbox" ? [] : "" }
+        : {}),
     }));
   };
 
@@ -133,7 +170,8 @@ const CreateCampaign = () => {
       slug: "",
       type: "text",
       defaultValue: "",
-      options: "Option 1 | Option 2",
+      options: "",
+      isDefault: false,
     });
     setModalOpen(true);
   };
@@ -149,27 +187,83 @@ const CreateCampaign = () => {
       return;
     }
 
-    const columnToAdd =
-      newColumn.type === "dropdown"
-        ? { ...newColumn, options: newColumn.options, defaultValue: "" }
-        : newColumn;
+    const columnToAdd = ["dropdown", "radio", "checkbox"].includes(
+      newColumn.type
+    )
+      ? {
+          ...newColumn,
+          options: newColumn.options,
+          defaultValue: newColumn.type === "checkbox" ? [] : "",
+        }
+      : newColumn;
 
     setColumns([...columns, columnToAdd]);
     setModalOpen(false);
   };
 
   const removeColumn = (index) => {
-    const defaultColumnNames = defaultColumns.map((col) => col.name);
-    const columnToRemove = columns[index];
+    if (columns[index].isDefault) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not Allowed",
+        html: `
+          <style>
+            .swal2-popup {
+              width: 280px !important;
+              height: 300px !important;
+              padding: 7px !important;
+              font-size: 14px !important;
+            }
+            .swal2-title {
+              font-size: 16px !important;
+            }
+            .swal2-content {
+              font-size: 14px !important;
+            }
+            .swal2-confirm {
+              font-size: 13px !important;
+              padding: 6px 12px !important;
+            }
+          </style>
+          <div>Default columns cannot be removed</div>
+        `,
+        showConfirmButton: true,
+        confirmButtonColor: "#3085d6",
+      });
 
-    if (defaultColumnNames.includes(columnToRemove.name)) {
-      alert("Default columns cannot be removed");
       return;
     }
 
-    if (window.confirm("Are you sure you want to delete this column?")) {
-      setColumns(columns.filter((_, i) => i !== index));
+    confirmDelete(
+      () => {
+        // deletion logic
+        return new Promise((resolve) => {
+          setColumns((prev) => {
+            const updated = prev.filter((_, i) => i !== index);
+            resolve();
+            return updated;
+          });
+        });
+      },
+      () => {
+        // optional success callback
+        console.log("Column removed");
+      },
+      "column"
+    );
+  };
+
+  const updateColumn = (index, field, value) => {
+    if (columns[index].isDefault) {
+      return;
     }
+
+    const updatedColumns = [...columns];
+    updatedColumns[index] = {
+      ...updatedColumns[index],
+      [field]: value,
+    };
+    setColumns(updatedColumns);
   };
 
   const breadcrumbItems = [
@@ -195,35 +289,30 @@ const CreateCampaign = () => {
         col_slug: col.slug,
         col_type: col.type,
         default_value: col.defaultValue,
-        options:
-          col.type === "dropdown"
-            ? col.options.split("|").map((opt) => opt.trim())
-            : undefined,
-        multiple: false,
+        options: ["dropdown", "radio", "checkbox"].includes(col.type)
+          ? col.options?.split("|").map((opt) => opt.trim())
+          : undefined,
+        multiple: col.type === "checkbox",
       })),
     };
 
-    console.log("Payload being sent:", payload);
     setIsLoading(true);
 
     try {
-      let result;
       if (editData) {
-        result = await updateCampaign(editData.id, payload);
+        await updateCampaign(editData.id, payload);
         toast.success("Campaign updated successfully!");
+        navigate("/campaign-index");
       } else {
-        result = await createCampaign(payload);
+        await createCampaign(payload);
         toast.success("Campaign created successfully!");
       }
-
-      console.log("Operation result:", result);
 
       if (!editData) {
         setCampaignName("");
         setColumns(defaultColumns);
       }
     } catch (error) {
-      console.error("Error:", error);
       toast.error(
         `Error ${editData ? "updating" : "creating"} campaign: ${error.message}`
       );
@@ -231,6 +320,7 @@ const CreateCampaign = () => {
       setIsLoading(false);
     }
   };
+
   return (
     <React.Fragment>
       <div className="page-content">
@@ -243,7 +333,7 @@ const CreateCampaign = () => {
             <CardBody>
               <FormGroup className="mb-4" style={{ width: "40%" }}>
                 <Label>Campaign Name</Label>
-                <Input
+                <EditableInput
                   type="text"
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
@@ -269,11 +359,7 @@ const CreateCampaign = () => {
                   <Label>Column Type</Label>
                 </Col>
                 <Col md={3}>
-                  <Label>
-                    {newColumn.type === "dropdown"
-                      ? "Options"
-                      : "Default Value"}
-                  </Label>
+                  <Label>Default Value / Options</Label>
                 </Col>
                 <Col md={2}>
                   <Label>Action</Label>
@@ -284,32 +370,112 @@ const CreateCampaign = () => {
                 <Row key={index} className="mb-3 align-items-center">
                   <Col md={3}>
                     <FormGroup>
-                      <ReadOnlyInput type="text" value={column.name} readOnly />
+                      {column.isDefault ? (
+                        <ReadOnlyInput
+                          type="text"
+                          value={column.name}
+                          readOnly
+                        />
+                      ) : (
+                        <EditableInput
+                          type="text"
+                          value={column.name}
+                          onChange={(e) =>
+                            updateColumn(index, "name", e.target.value)
+                          }
+                        />
+                      )}
                     </FormGroup>
                   </Col>
                   <Col md={2}>
                     <FormGroup>
-                      <ReadOnlyInput type="text" value={column.slug} readOnly />
+                      {column.isDefault ? (
+                        <ReadOnlyInput
+                          type="text"
+                          value={column.slug}
+                          readOnly
+                        />
+                      ) : (
+                        <EditableInput
+                          type="text"
+                          value={column.slug}
+                          onChange={(e) =>
+                            updateColumn(index, "slug", e.target.value)
+                          }
+                        />
+                      )}
                     </FormGroup>
                   </Col>
                   <Col md={2}>
                     <FormGroup>
-                      <ReadOnlyInput type="text" value={column.type} readOnly />
+                      {column.isDefault ? (
+                        <ReadOnlyInput
+                          type="text"
+                          value={column.type}
+                          readOnly
+                        />
+                      ) : (
+                        <Input
+                          type="select"
+                          value={column.type}
+                          onChange={(e) =>
+                            updateColumn(index, "type", e.target.value)
+                          }
+                        >
+                          <option value="text">Text</option>
+                          <option value="number">Number</option>
+                          <option value="date">Date</option>
+                          <option value="dropdown">Dropdown</option>
+                          <option value="radio">Radio</option>
+                          <option value="checkbox">Checkbox</option>
+                        </Input>
+                      )}
                     </FormGroup>
                   </Col>
                   <Col md={3}>
                     <FormGroup>
-                      {column.type === "dropdown" ? (
-                        <ReadOnlyInput
+                      {column.isDefault ? (
+                        ["dropdown", "radio", "checkbox"].includes(
+                          column.type
+                        ) ? (
+                          <ReadOnlyInput
+                            type="text"
+                            value={column.options || ""}
+                            readOnly
+                          />
+                        ) : (
+                          <ReadOnlyInput
+                            type={column.type === "date" ? "date" : "text"}
+                            value={
+                              Array.isArray(column.defaultValue)
+                                ? column.defaultValue.join(", ")
+                                : column.defaultValue
+                            }
+                            readOnly
+                          />
+                        )
+                      ) : ["dropdown", "radio", "checkbox"].includes(
+                          column.type
+                        ) ? (
+                        <EditableInput
                           type="text"
                           value={column.options || ""}
-                          readOnly
+                          onChange={(e) =>
+                            updateColumn(index, "options", e.target.value)
+                          }
+                          placeholder=" | "
                         />
                       ) : (
-                        <ReadOnlyInput
+                        <EditableInput
                           type={column.type === "date" ? "date" : "text"}
-                          value={column.defaultValue}
-                          readOnly
+                          value={
+                            Array.isArray(column.defaultValue)
+                              ? column.defaultValue.join(", ")
+                              : column.defaultValue
+                          }
+                          onChange={(e) =>
+                            updateColumn(index, "defaultValue", e.target.value)
+                          }
                         />
                       )}
                     </FormGroup>
@@ -377,10 +543,12 @@ const CreateCampaign = () => {
               <option value="number">Number</option>
               <option value="date">Date</option>
               <option value="dropdown">Dropdown</option>
+              <option value="radio">Radio</option>
+              <option value="checkbox">Checkbox</option>
             </Input>
           </FormGroup>
 
-          {newColumn.type === "dropdown" ? (
+          {["dropdown", "radio", "checkbox"].includes(newColumn.type) ? (
             <FormGroup>
               <Label>Options</Label>
               <Input
@@ -389,7 +557,7 @@ const CreateCampaign = () => {
                 onChange={(e) =>
                   handleNewColumnChange("options", e.target.value)
                 }
-                placeholder="Option 1 | Option 2"
+                placeholder=" | "
               />
               <small className="text-muted">Separate options with |</small>
             </FormGroup>

@@ -4,15 +4,19 @@ import TableContainer from "../../components/Common/TableContainer";
 import { FaTrash } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
 import { useMemo, useEffect, useState } from "react";
-import axios from "axios";
 import { API_URL } from "../../services/auth";
 import { useNavigate } from "react-router-dom";
+import { deleteRole } from "../../services/roleService";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const AllRole = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchText, setSearchText] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+  const { confirmDelete } = useDeleteConfirmation();
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,18 +41,26 @@ const AllRole = () => {
   }, []);
 
   const handleEdit = (role) => {
-    navigate("/create-role", {
-      state: {
-        role: {
-          id: role.id,
-          name: role.name,
-          Permissions: role.Permissions,
-        },
-      },
-    });
+    navigate("/create-role", { state: { role } });
   };
+
+  const handleDelete = (id) => {
+    confirmDelete(
+      async () => {
+        const response = await deleteRole(id);
+        if (!response.success)
+          throw new Error(response.message || "Failed to delete role.");
+      },
+      () => {
+        setRoles((prevRoles) => prevRoles.filter((role) => role.id !== id));
+      },
+      "role"
+    );
+  };
+
   const breadcrumbItems = [
     { title: "Dashboard", link: "/" },
+    { title: "Role", link: "#" },
     { title: "All Roles", link: "#" },
   ];
 
@@ -57,39 +69,59 @@ const AllRole = () => {
       Header: "ID",
       accessor: (_row, i) => i + 1,
       disableFilters: true,
-      width: 70,
     },
     {
       Header: "Role Name",
       accessor: "name",
       disableFilters: true,
-      width: 120,
     },
-
     {
       Header: "Permissions",
       accessor: "Permissions",
       disableFilters: true,
-      Cell: ({ value }) => (
-        <div style={{ maxWidth: "300px" }}>
-          {value && value.length > 0 ? (
-            value.map((permission) => (
-              <Badge color="info" className="me-1 mb-1" key={permission.id}>
-                {permission.name}
-              </Badge>
-            ))
-          ) : (
-            <Badge color="secondary">No permissions</Badge>
-          )}
-        </div>
-      ),
+      Cell: ({ value }) => {
+        const [showAll, setShowAll] = useState(false);
+        const visiblePermissions = showAll ? value : value?.slice(0, 3) || [];
+        const remainingCount = value?.length - 3 || 0;
+
+        return (
+          <div style={{ maxWidth: "auto" }}>
+            {visiblePermissions.length > 0 ? (
+              <>
+                {visiblePermissions.map((permission) => (
+                  <Badge
+                    color="secondary"
+                    className="me-1 mb-1"
+                    key={permission.id}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {permission.name}
+                  </Badge>
+                ))}
+                {remainingCount > 0 && (
+                  <Button
+                    color="link"
+                    size="sm"
+                    className="p-0 ms-1 text-secondary"
+                    onClick={() => setShowAll(!showAll)}
+                    style={{ whiteSpace: "nowrap" }} // Prevent button text wrapping
+                  >
+                    {showAll ? "Show Less" : `+${remainingCount} more`}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Badge color="secondary">No permissions</Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       Header: "Status",
       accessor: "status",
       disableFilters: true,
       Cell: () => <Badge color="success">Active</Badge>,
-      width: 100,
     },
     {
       Header: "Action",
@@ -109,26 +141,22 @@ const AllRole = () => {
             size="sm"
             className="px-2 py-1"
             onClick={() => handleDelete(row.original.id)}
+            disabled={deletingId === row.original.id}
           >
-            <FaTrash size={14} />
+            {deletingId === row.original.id ? (
+              <span
+                className="spinner-border spinner-border-sm"
+                role="status"
+                aria-hidden="true"
+              />
+            ) : (
+              <FaTrash size={14} />
+            )}
           </Button>
         </div>
       ),
-      width: 120,
     },
   ]);
-
-  const handleDelete = async (roleId) => {
-    if (window.confirm("Are you sure you want to delete this role?")) {
-      try {
-        await axios.delete(`/api/roles/${roleId}`);
-        setRoles(roles.filter((role) => role.id !== roleId));
-      } catch (err) {
-        console.error("Error deleting role:", err);
-        alert("Failed to delete role");
-      }
-    }
-  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;

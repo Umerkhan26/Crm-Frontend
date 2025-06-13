@@ -91,12 +91,6 @@ const SidebarContent = (props) => {
     // Handle form submission
   };
 
-  document.querySelectorAll("#side-menu a").forEach((item) => {
-    item.addEventListener("click", () => {
-      console.log("Clicked on:", item.pathname);
-    });
-  });
-
   return (
     <React.Fragment>
       <div id="sidebar-menu">
@@ -200,16 +194,6 @@ const SidebarContent = (props) => {
             <ul className="sub-menu">
               <li>
                 <Link to="/order-index">{props.t("All Orders")}</Link>
-              </li>
-              <li>
-                <Link to="/datatable-table">
-                  {props.t("Callback-Final Expense")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/responsive-table">
-                  {props.t("Callback-Final Expense(Direct Mail)")}
-                </Link>
               </li>
 
               <li>

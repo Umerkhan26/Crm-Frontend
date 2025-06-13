@@ -14,11 +14,13 @@ import {
   DropdownItem,
   Button,
 } from "reactstrap";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { deleteCampaign, fetchCampaigns } from "../../services/campaignService";
-// import { hasPermission } from "../../utils/permissionUtils";
+import { FaTrash } from "react-icons/fa";
+import { fetchAllOrders } from "../../services/orderService";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const AllCampaigns = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(50);
@@ -26,24 +28,36 @@ const AllCampaigns = () => {
   const [searchText, setSearchText] = useState("");
   const [campaigns, setCampaigns] = useState([]);
   const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const { confirmDelete } = useDeleteConfirmation();
 
   // const user = JSON.parse(localStorage.getItem("authuser"));
 
   useEffect(() => {
-    const loadCampaigns = async () => {
+    const loadData = async () => {
       try {
-        const data = await fetchCampaigns();
-        console.log("all Campaign", data);
-        setCampaigns(data);
+        // Load Orders
+        const ordersData = await fetchAllOrders();
+        setOrders(ordersData.data || []);
+
+        // Load Campaigns
+        const campaignsData = await fetchCampaigns();
+        console.log("all Campaign", campaignsData);
+        setCampaigns(campaignsData);
       } catch (error) {
-        console.error("Failed to fetch campaigns:", error);
+        console.error("Error loading data:", error);
       }
     };
 
-    loadCampaigns();
+    loadData();
   }, []);
 
   const toggleDropdown = () => setDropdownOpen((prevState) => !prevState);
+
+  const isCampaignLinked = (campaignId) => {
+    if (!Array.isArray(orders)) return false;
+    return orders.some((order) => order.campaign_id === campaignId);
+  };
 
   const handleEdit = (campaign) => {
     const editData = {
@@ -55,9 +69,7 @@ const AllCampaigns = () => {
           slug: field.col_slug,
           type: field.col_type,
           defaultValue: field.default_value,
-          options: field.options
-            ? field.options.join(" | ")
-            : "Option 1 | Option 2",
+          options: field.options ? field.options.join(" | ") : " | ",
         })) || [],
     };
 
@@ -67,18 +79,22 @@ const AllCampaigns = () => {
   const filteredData = campaigns.filter((campaign) =>
     campaign.campaignName.toLowerCase().includes(searchText.toLowerCase())
   );
+
   const handleDelete = async (campaignId) => {
-    // if (!hasPermission(user, "campaign", "delete")) {
-    //   toast.error("You do not have permission to delete campaigns.");
-    //   return;
-    // }
-    try {
-      await deleteCampaign(campaignId);
-      toast.success("Campaign deleted successfully");
-      setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
-    } catch (error) {
-      toast.error("Error deleting campaign");
+    const isLinkedToOrder = orders.some(
+      (order) => order.campaign_id === campaignId
+    );
+
+    if (isLinkedToOrder) {
+      toast.error("Cannot delete: Campaign is linked to an order.");
+      return;
     }
+
+    const deleteFn = () => deleteCampaign(campaignId);
+    const onSuccess = () =>
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
+
+    confirmDelete(deleteFn, onSuccess, "campaign");
   };
 
   const breadcrumbItems = [
@@ -87,6 +103,8 @@ const AllCampaigns = () => {
   ];
 
   const formatColumns = (fields) => {
+    if (!Array.isArray(fields)) return <span>No columns</span>;
+
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
         {fields.map((field, index) => (
@@ -96,13 +114,13 @@ const AllCampaigns = () => {
               backgroundColor: "#d6d8db",
               padding: "4px 8px",
               borderRadius: "6px",
-              fontSize: "0.8rem",
+              fontSize: "0.6rem",
               whiteSpace: "nowrap",
               fontWeight: "500",
               color: "#333",
             }}
           >
-            {field.col_name}
+            {field.col_name || "Unnamed Column"}
           </span>
         ))}
       </div>
@@ -160,9 +178,9 @@ const AllCampaigns = () => {
               </Row>
 
               <div className="table-responsive">
-                <table className="table table-bordered table-nowrap">
+                <table className="table table-bordered table-nowrap ">
                   <thead className="table-light">
-                    <tr>
+                    <tr style={{ fontSize: "14px" }}>
                       <th>Campaign Name</th>
                       <th>Campaign Columns</th>
                       <th>Options</th>
@@ -171,22 +189,58 @@ const AllCampaigns = () => {
                   <tbody>
                     {filteredData.slice(0, entriesPerPage).map((row) => (
                       <tr key={row.id}>
-                        <td style={{ color: "blue" }}>{row.campaignName}</td>
-                        <td>{formatColumns(row.parsedFields || [])}</td>
+                        <td style={{ fontSize: "13px" }}>
+                          <button
+                            onClick={() =>
+                              navigate(`/order-index?campaign=${row.id}`)
+                            }
+                            style={{
+                              color: "blue",
+                              cursor: "pointer",
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                              font: "inherit",
+                            }}
+                          >
+                            {row.campaignName}
+                          </button>
+                        </td>
+
+                        <td style={{ fontSize: "12px" }}>
+                          {formatColumns(row.parsedFields || [])}
+                        </td>
                         <td>
-                          <Button color="link" size="sm" className="p-0 me-2">
-                            <FiEdit2
-                              style={{ cursor: "pointer", marginRight: "10px" }}
-                              onClick={() => handleEdit(row)}
-                            />
-                          </Button>
                           <Button
-                            color="link"
+                            color="primary"
                             size="sm"
-                            className="p-0 text-danger"
+                            className="px-2 py-1 p-0 me-2"
+                            onClick={() =>
+                              !isCampaignLinked(row.id) && handleEdit(row)
+                            }
+                            disabled={isCampaignLinked(row.id)}
+                            style={{
+                              opacity: isCampaignLinked(row.id) ? 0.5 : 1,
+                              cursor: isCampaignLinked(row.id)
+                                ? "not-allowed"
+                                : "pointer",
+                            }}
+                            title={
+                              isCampaignLinked(row.id)
+                                ? "Cannot edit: Campaign is linked to an order"
+                                : "Edit campaign"
+                            }
+                          >
+                            <FiEdit2 size={14} />
+                          </Button>
+
+                          <Button
+                            color="danger"
+                            size="sm"
+                            className="px-2 py-1"
                             onClick={() => handleDelete(row.id)}
                           >
-                            <FiTrash2 size={16} />
+                            <FaTrash size={14} />
                           </Button>
                         </td>
                       </tr>

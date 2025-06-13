@@ -1,47 +1,30 @@
 export const API_URL = "http://localhost:3000/api";
 
-export const getAllRoles = async () => {
-  const response = await fetch(`${API_URL}/all`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch roles");
-  }
-
-  return response.json();
-};
-
-export const registerUser = async (payload) => {
+export const registerUser = async (formData) => {
+  const token = localStorage.getItem("token");
   const response = await fetch(`${API_URL}/registerr`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(payload),
+    body: formData,
   });
 
-  const result = await response.json();
-
   if (!response.ok) {
-    throw new Error(result.message || "Failed to register user");
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Registration failed");
   }
 
-  return result;
+  return await response.json();
 };
 
-export const updateUserById = async (id, payload) => {
+export const updateUserById = async (id, payload, token) => {
   const response = await fetch(`${API_URL}/updateUserById/${id}`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(payload),
+    body: payload,
   });
 
   const result = await response.json();
@@ -75,39 +58,12 @@ export const getAllUsers = async () => {
     throw new Error(error.message || "Network error");
   }
 };
-// export const getUserById = async (id) => {
-//   try {
-//     const response = await fetch(`${API_URL}/getUserById/${id}`);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.message || "Failed to fetch user");
-//     }
-
-//     const data = await response.json();
-//     return data.user;
-//   } catch (error) {
-//     throw new Error(error.message || "Network error");
-//   }
-// };
-
-// export const deleteUserById = async (userId) => {
-//   try {
-//     const response = await axios.delete(`${API_URL}/deleteUserById/${userId}`);
-//     console.log("Deleetinh user", response);
-//     return response.data.message;
-//   } catch (error) {
-//     throw new Error(error.response?.data?.message || "Failed to delete user.");
-//   }
-// };
-
-// services/auth.js
 
 export const getUserById = async (userId) => {
   try {
-    const token = localStorage.getItem("token"); // Get token from localStorage
+    const token = localStorage.getItem("token");
     if (!token) {
-      throw new Error("No token provided"); // Line 66
+      throw new Error("No token provided");
     }
 
     const response = await fetch(`${API_URL}/getUserById/${userId}`, {
@@ -131,17 +87,14 @@ export const getUserById = async (userId) => {
 // In services/auth.js
 export const updateUser = async (userId, userData) => {
   try {
-    const response = await fetch(
-      `http://localhost:3000/api/updateUserById/${userId}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(userData),
-      }
-    );
+    const response = await fetch(`${API_URL}/updateUserById/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(userData),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to update user");
@@ -149,6 +102,30 @@ export const updateUser = async (userId, userData) => {
 
     return await response.json();
   } catch (error) {
+    throw error;
+  }
+};
+
+export const blockOrUnblockUser = async (userId, action) => {
+  try {
+    const response = await fetch(`${API_URL}/blockOrUnblockUser/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update user status");
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error in blockOrUnblockUser:", error);
     throw error;
   }
 };

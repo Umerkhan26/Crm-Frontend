@@ -6,7 +6,9 @@ import { toast } from "react-toastify";
 import VendorForm from "./Registration/VenderForm";
 import ClientForm from "./Registration/ClientForm";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getAllRoles, registerUser, updateUserById } from "../../services/auth";
+import { registerUser, updateUserById } from "../../services/auth";
+import { ClipLoader } from "react-spinners";
+import { getAllRoles } from "../../services/roleService";
 
 const RegisterUser = () => {
   const { state } = useLocation();
@@ -16,6 +18,7 @@ const RegisterUser = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedSubVendors, setSelectedSubVendors] = useState([]);
   const [roleOptions, setRoleOptions] = useState([]);
+  const [loading, setLoading] = useState(false); // Unified loading state
   const [formData, setFormData] = useState({
     firstname: "",
     lastname: "",
@@ -26,7 +29,7 @@ const RegisterUser = () => {
     website: "",
     coverage: "",
     linkedin: "",
-    useruimage: null,
+    userImage: null,
     referred_to: "",
     smtpemail: "",
     smtppassword: "",
@@ -49,6 +52,7 @@ const RegisterUser = () => {
 
   useEffect(() => {
     const loadRoles = async () => {
+      setLoading(true); // Start loader
       try {
         const response = await getAllRoles();
         const roles = Array.isArray(response) ? response : response.roles || [];
@@ -71,7 +75,7 @@ const RegisterUser = () => {
             website: user.user.website || "",
             coverage: user.user.coverage || "",
             linkedin: user.user.linkedin || "",
-            useruimage: null,
+            userImage: null, // Corrected from useruimage
             referred_to: user.user.referred_to || "",
             smtpemail: user.user.smtpemail || "",
             smtppassword: "",
@@ -97,12 +101,15 @@ const RegisterUser = () => {
               role.id === user.user.roleId ||
               role.name.toLowerCase() === user.user.userrole?.toLowerCase()
           );
-          if (userRole)
+          if (userRole) {
             setSelectedRole({ value: userRole.id, label: userRole.name });
+          }
         }
       } catch (error) {
         console.error("Error fetching roles:", error);
         toast.error("Failed to load roles. Please try again.");
+      } finally {
+        setLoading(false); // Stop loader
       }
     };
 
@@ -136,6 +143,7 @@ const RegisterUser = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start loader
 
     const payload = {
       ...formData,
@@ -143,15 +151,29 @@ const RegisterUser = () => {
       roleName: selectedRole?.label,
     };
 
+    const formPayload = new FormData();
+    for (const key in payload) {
+      if (key === "userImage" && payload[key] instanceof File) {
+        formPayload.append(key, payload[key], payload[key].name);
+      } else if (payload[key] !== null && payload[key] !== undefined) {
+        formPayload.append(key, payload[key]);
+      }
+    }
+
+    // Debug: Log FormData entries
+    for (let [key, value] of formPayload.entries()) {
+      console.log(`${key}:`, value);
+    }
+
     try {
       const token = localStorage.getItem("token");
       let result;
 
       if (user) {
-        result = await updateUserById(user.user.id, payload, token);
+        result = await updateUserById(user.user.id, formPayload, token);
         toast.success("User updated successfully!");
       } else {
-        result = await registerUser(payload, token);
+        result = await registerUser(formPayload);
         toast.success("User registered successfully!");
       }
 
@@ -162,6 +184,8 @@ const RegisterUser = () => {
       toast.error(
         `Failed to ${user ? "update" : "register"} user: ${error.message}`
       );
+    } finally {
+      setLoading(false); // Stop loader
     }
   };
 
@@ -210,246 +234,294 @@ const RegisterUser = () => {
           <Col xl="12">
             <Card>
               <CardBody>
-                <form className="needs-validation" onSubmit={handleSubmit}>
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">
-                          First Name <span className="text-danger">*</span>
-                        </Label>
-                        <input
-                          name="firstname"
-                          value={formData.firstname}
-                          onChange={handleChange}
-                          placeholder="First name"
-                          type="text"
-                          className="form-control"
-                          required
-                        />
-                      </div>
-                    </Col>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">
-                          Last Name <span className="text-danger">*</span>
-                        </Label>
-                        <input
-                          name="lastname"
-                          value={formData.lastname}
-                          onChange={handleChange}
-                          placeholder="Last name"
-                          type="text"
-                          className="form-control"
-                          required
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Email</Label>
-                        <input
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          placeholder="Email"
-                          type="email"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Password</Label>
-                        <input
-                          name="password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          placeholder="Password"
-                          type="password"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Phone</Label>
-                        <input
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="Phone"
-                          type="tel"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Address</Label>
-                        <input
-                          name="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          placeholder="Address"
-                          type="text"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Website</Label>
-                        <input
-                          name="website"
-                          value={formData.website}
-                          onChange={handleChange}
-                          placeholder="Website"
-                          type="url"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Coverage Area</Label>
-                        <input
-                          name="coverage"
-                          value={formData.coverage}
-                          onChange={handleChange}
-                          placeholder="Coverage Area"
-                          type="text"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">LinkedIn Profile</Label>
-                        <input
-                          name="linkedin"
-                          value={formData.linkedin}
-                          onChange={handleChange}
-                          placeholder="LinkedIn Profile"
-                          type="url"
-                          className="form-control"
-                        />
-                      </div>
-                    </Col>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Display Picture</Label>
-                        <div className="custom-file">
-                          <input
-                            type="file"
-                            name="useruimage"
-                            onChange={handleChange}
-                            className="custom-file-input rounded"
-                            style={{
-                              border: "1px solid #ced4da",
-                              padding: "0.375rem 0.75rem",
-                              width: "100%",
-                            }}
-                            id="displayPicture"
-                          />
-                          <Label
-                            className="custom-file-label"
-                            htmlFor="displayPicture"
-                          >
-                            {formData.useruimage?.name || "Choose file"}
-                          </Label>
-                        </div>
-                        {user?.user.useruimage && !formData.useruimage && (
-                          <p className="mt-2">
-                            Current image: {user.user.useruimage}
-                          </p>
-                        )}
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row>
-                    <Col md="6">
-                      <div className="mb-3">
-                        <Label className="form-label">Role</Label>
-                        <Select
-                          name="role"
-                          options={roleOptions}
-                          value={selectedRole}
-                          onChange={handleRoleChange}
-                          className="basic-single"
-                          classNamePrefix="select"
-                          styles={{
-                            control: (provided) => ({
-                              ...provided,
-                              minHeight: "38px",
-                              border: "1px solid #ced4da",
-                              "&:hover": {
-                                borderColor: "#ced4da",
-                              },
-                            }),
-                            dropdownIndicator: (provided) => ({
-                              ...provided,
-                              color: "#495057",
-                              padding: "8px",
-                            }),
-                            option: (provided, state) => ({
-                              ...provided,
-                              color: "#495057",
-                              backgroundColor: state.isSelected
-                                ? "#a6ace6"
-                                : "white",
-                              "&:hover": {
-                                backgroundColor: "#5664d2",
-                              },
-                            }),
-                            singleValue: (provided) => ({
-                              ...provided,
-                              color: "#495057",
-                            }),
-                          }}
-                        />
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <VendorForm
-                    formData={formData}
-                    handleChange={handleChange}
-                    selectedSubVendors={selectedSubVendors}
-                    handleSubVendorChange={handleSubVendorChange}
-                    subVendoptions={subVendorOptions}
-                    customStyles={customStyles}
-                  />
-                  <ClientForm
-                    selectedSubVendors={selectedSubVendors}
-                    handleSubVendorChange={handleSubVendorChange}
-                    subVendoptions={subVendorOptions}
-                    customStyles={customStyles}
-                  />
-
-                  <div className="mt-3 d-flex">
-                    <Button
-                      color="primary"
-                      type="submit"
-                      className="w-100"
-                      style={{ maxWidth: "150px" }}
-                    >
-                      {user ? "Update" : "Submit"}
-                    </Button>
+                {loading ? (
+                  <div
+                    className="d-flex justify-content-center align-items-center"
+                    style={{ minHeight: "200px" }}
+                  >
+                    <ClipLoader
+                      color="#5664d2"
+                      size={40}
+                      loading={loading}
+                      aria-label="Loading Spinner"
+                    />
                   </div>
-                </form>
+                ) : (
+                  <form className="needs-validation" onSubmit={handleSubmit}>
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">
+                            First Name <span className="text-danger">*</span>
+                          </Label>
+                          <input
+                            name="firstname"
+                            value={formData.firstname}
+                            onChange={handleChange}
+                            placeholder="First name"
+                            type="text"
+                            className="form-control"
+                            required
+                          />
+                        </div>
+                      </Col>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">
+                            Last Name <span className="text-danger">*</span>
+                          </Label>
+                          <input
+                            name="lastname"
+                            value={formData.lastname}
+                            onChange={handleChange}
+                            placeholder="Last name"
+                            type="text"
+                            className="form-control"
+                            required
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Email</Label>
+                          <input
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="Email"
+                            type="email"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Password</Label>
+                          <input
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="Password"
+                            type="password"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Phone</Label>
+                          <input
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            placeholder="Phone"
+                            type="tel"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Address</Label>
+                          <input
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                            placeholder="Address"
+                            type="text"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Website</Label>
+                          <input
+                            name="website"
+                            value={formData.website}
+                            onChange={handleChange}
+                            placeholder="Website"
+                            type="url"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Coverage Area</Label>
+                          <input
+                            name="coverage"
+                            value={formData.coverage}
+                            onChange={handleChange}
+                            placeholder="Coverage Area"
+                            type="text"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">LinkedIn Profile</Label>
+                          <input
+                            name="linkedin"
+                            value={formData.linkedin}
+                            onChange={handleChange}
+                            placeholder="LinkedIn Profile"
+                            type="url"
+                            className="form-control"
+                          />
+                        </div>
+                      </Col>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Display Picture</Label>
+                          <div className="custom-file">
+                            <input
+                              type="file"
+                              name="userImage"
+                              onChange={handleChange}
+                              className="custom-file-input rounded"
+                              style={{
+                                border: "1px solid #ced4da",
+                                padding: "0.375rem 0.75rem",
+                                width: "100%",
+                              }}
+                              id="displayPicture"
+                              accept="image/*"
+                            />
+                            <Label
+                              className="custom-file-label"
+                              htmlFor="displayPicture"
+                            >
+                              {formData.userImage?.name || "Choose file"}{" "}
+                              {/* Fixed typo */}
+                            </Label>
+                          </div>
+                          {user?.user.userImage && !formData.userImage && (
+                            <div>
+                              <p className="mb-2 ">Current image:</p>
+                              <div
+                                style={{
+                                  width: "60px",
+                                  height: "60px",
+                                  borderRadius: "50%",
+                                  overflow: "hidden",
+                                  border: "2px solid #dee2e6",
+                                }}
+                              >
+                                <img
+                                  src={user.user.userImage}
+                                  alt="Current profile"
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    objectPosition: "top",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md="6">
+                        <div className="mb-3">
+                          <Label className="form-label">Role</Label>
+                          <Select
+                            name="role"
+                            options={roleOptions}
+                            value={selectedRole}
+                            onChange={handleRoleChange}
+                            className="basic-single"
+                            classNamePrefix="select"
+                            styles={{
+                              control: (provided) => ({
+                                ...provided,
+                                minHeight: "38px",
+                                border: "1px solid #ced4da",
+                                "&:hover": {
+                                  borderColor: "#ced4da",
+                                },
+                              }),
+                              dropdownIndicator: (provided) => ({
+                                ...provided,
+                                color: "#495057",
+                                padding: "8px",
+                              }),
+                              option: (provided, state) => ({
+                                ...provided,
+                                color: "#495057",
+                                backgroundColor: state.isSelected
+                                  ? "#a6ace6"
+                                  : "white",
+                                "&:hover": {
+                                  backgroundColor: "#5664d2",
+                                },
+                              }),
+                              singleValue: (provided) => ({
+                                ...provided,
+                                color: "#495057",
+                              }),
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <VendorForm
+                      formData={formData}
+                      handleChange={handleChange}
+                      selectedSubVendors={selectedSubVendors}
+                      handleSubVendorChange={handleSubVendorChange}
+                      subVendoptions={subVendorOptions}
+                      customStyles={customStyles}
+                    />
+                    <ClientForm
+                      selectedSubVendors={selectedSubVendors}
+                      handleSubVendorChange={handleSubVendorChange}
+                      subVendoptions={subVendorOptions}
+                      customStyles={customStyles}
+                    />
+
+                    <div className="mt-3 d-flex">
+                      <Button
+                        color="primary"
+                        type="submit"
+                        className="w-100"
+                        style={{ maxWidth: "150px" }}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <ClipLoader
+                            color="#fff"
+                            size={20}
+                            loading={loading}
+                            aria-label="Loading Spinner"
+                          />
+                        ) : user ? (
+                          "Update"
+                        ) : (
+                          "Submit"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </CardBody>
             </Card>
           </Col>
