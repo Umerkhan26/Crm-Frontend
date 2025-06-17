@@ -288,7 +288,7 @@ const Allorders = () => {
             className="text-primary"
             style={{ cursor: "pointer" }}
             onClick={() => {
-              sessionStorage.setItem("fromCampaignContext", "true");
+              sessionStorage.setItem("fromOrderLink", "true");
               navigate(`/lead-index?orderId=${row.original.id}`);
             }}
           >

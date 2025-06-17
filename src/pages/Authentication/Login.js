@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { API_URL } from "../../services/auth";
 
 function Login() {
   const {
@@ -25,7 +26,7 @@ function Login() {
   const onSubmit = async (values) => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/login", {
+      const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

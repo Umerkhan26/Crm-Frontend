@@ -45,7 +45,6 @@ export const fetchAllLeads = async (page = 1, pageSize = 10) => {
 
     const result = await response.json();
 
-    // Check if result.data exists and is an array
     if (!result.data || !Array.isArray(result.data)) {
       throw new Error("Invalid response format: Expected an array of leads");
     }
@@ -89,8 +88,8 @@ export const updateLead = async (id, updatedData) => {
       body: JSON.stringify(updatedData),
     });
 
-    const responseData = await response.json(); // Parse the response
-    console.log("Update lead response:", responseData); // Log the parsed response
+    const responseData = await response.json();
+    console.log("Update lead response:", responseData);
 
     if (!response.ok) {
       throw new Error(responseData.message || "Failed to update lead");

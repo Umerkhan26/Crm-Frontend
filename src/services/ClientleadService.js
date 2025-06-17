@@ -23,51 +23,6 @@ export const createClientLead = async (leadData) => {
   }
 };
 
-// export const getAllClientLeads = async (
-//   page = 1,
-//   limit = 10,
-//   orderId = null
-// ) => {
-//   try {
-//     let url = `${API_URL}/getAllClientLeads?page=${page}&limit=${limit}`;
-//     if (orderId) {
-//       url += `&orderId=${orderId}`;
-//     }
-
-//     const response = await fetch(url, {
-//       method: "GET",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${localStorage.getItem("token")}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! Status: ${response.status}`);
-//     }
-
-//     const result = await response.json();
-//     if (!result.success) {
-//       throw new Error(result.message || "Failed to fetch leads");
-//     }
-
-//     return {
-//       data: result.data.map((lead) => ({
-//         id: lead.id,
-//         orderId: lead.order_id,
-//         campaignName: lead.campaign?.campaignName || "",
-//         leadData: JSON.parse(lead.leadData || "{}"),
-//       })),
-//       totalItems: result.totalItems,
-//       totalPages: result.totalPages,
-//       currentPage: result.currentPage,
-//     };
-//   } catch (error) {
-//     console.error("Error in getAllClientLeads:", error);
-//     throw new Error(`Error fetching leads: ${error.message}`);
-//   }
-// };
-
 export const getAllClientLeads = async (
   page = 1,
   limit = 10,
@@ -102,7 +57,7 @@ export const getAllClientLeads = async (
         orderId: lead.order_id,
         campaignName: lead.campaign?.campaignName || "",
         leadData: JSON.parse(lead.leadData || "{}"),
-        status: lead.status, // Add status field here
+        status: lead.status,
       })),
       totalItems: result.totalItems,
       totalPages: result.totalPages,
@@ -119,7 +74,7 @@ export const updateClientLead = async (id, updateData) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`, // Adjust based on your auth setup
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
       body: JSON.stringify(updateData),
     });
@@ -151,7 +106,7 @@ export const deleteLead = async (id) => {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`, // if using auth
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
 
@@ -180,7 +135,7 @@ export const updateLeadStatus = async (id, status) => {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // <-- Include the token
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ status }),
     });

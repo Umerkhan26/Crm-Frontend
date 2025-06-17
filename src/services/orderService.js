@@ -24,8 +24,6 @@ export const fetchCampaigns = async () => {
     if (!response.ok) {
       throw new Error(result.message || "Failed to fetch campaigns.");
     }
-
-    // Access groupedCampaigns instead of result directly
     const groupedCampaigns = result.groupedCampaigns || {};
     const campaignNames = Object.keys(groupedCampaigns);
     if (campaignNames.length === 0) {
@@ -98,7 +96,7 @@ export const fetchAllOrders = async (page = 1, limit = 10) => {
     }
 
     const result = await response.json();
-    return result; // returns the full paginated response
+    return result;
   } catch (error) {
     console.error("Error fetching orders:", error.message);
     throw error;
