@@ -170,7 +170,7 @@ const CreateRole = () => {
     const fetchPermissions = async () => {
       try {
         const result = await getAllPermissions();
-        const permissions = result.data;
+        const permissions = result.data || result;
         if (!Array.isArray(permissions)) throw new Error("Invalid data format");
         setPermissionsList(permissions);
 

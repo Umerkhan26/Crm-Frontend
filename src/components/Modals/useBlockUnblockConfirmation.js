@@ -1,4 +1,3 @@
-// hooks/useBlockUnblockConfirmation.js
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
@@ -28,7 +27,7 @@ const useBlockUnblockConfirmation = () => {
             font-size: 14px !important;
           }
           .swal2-actions {
-            margin-top: 8px !important;
+            margin-top: -12px !important;
           }
           .swal2-confirm,
           .swal2-cancel {

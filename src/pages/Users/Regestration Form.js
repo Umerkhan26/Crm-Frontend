@@ -492,12 +492,12 @@ const RegisterUser = () => {
                       subVendoptions={subVendorOptions}
                       customStyles={customStyles}
                     />
-                    <ClientForm
+                    {/* <ClientForm
                       selectedSubVendors={selectedSubVendors}
                       handleSubVendorChange={handleSubVendorChange}
                       subVendoptions={subVendorOptions}
                       customStyles={customStyles}
-                    />
+                    /> */}
 
                     <div className="mt-3 d-flex">
                       <Button

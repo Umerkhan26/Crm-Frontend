@@ -36,6 +36,7 @@ function Login() {
           password: values.password,
         }),
       });
+      console.log("LOGIN IN RESPONSE", response);
 
       const data = await response.json();
       if (!response.ok) {
@@ -47,6 +48,7 @@ function Login() {
       // Save token and user to localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem("userId", data.user.id); // Explicitly save userId
 
       // Show success toast
       toast.success("Login successful!", {

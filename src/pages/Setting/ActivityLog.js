@@ -1,11 +1,18 @@
 import { Card, CardBody, Container, Row, Col } from "reactstrap";
 import Breadcrumb from "../../components/Common/Breadcrumb";
-import { useMemo, useState } from "react";
-import { FiTrash2, FiFilter, FiRefreshCw, FiSearch } from "react-icons/fi";
+import { useMemo, useState, useEffect } from "react";
+import { FiTrash2, FiFilter, FiRefreshCw } from "react-icons/fi";
 import TableContainer from "../../components/Common/TableContainer";
 import Select from "react-select";
+import {
+  getActivitiesByUserId,
+  deleteActivityById,
+} from "../../services/activityService";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const ActivityLog = () => {
+  const { confirmDelete } = useDeleteConfirmation();
+  const userId = parseInt(localStorage.getItem("userId"), 10);
   const [searchText, setSearchText] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -13,6 +20,9 @@ const ActivityLog = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/" },
@@ -20,11 +30,84 @@ const ActivityLog = () => {
     { title: "Activity Log", link: "#" },
   ];
 
+  // Fetch activities
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const data = await getActivitiesByUserId(userId);
+
+        const authUserString = localStorage.getItem("authUser");
+        let fullName = "Unknown";
+        if (authUserString) {
+          const authUser = JSON.parse(authUserString);
+          if (authUser.firstname && authUser.lastname) {
+            fullName =
+              authUser.firstname.charAt(0).toUpperCase() +
+              authUser.firstname.slice(1) +
+              " " +
+              authUser.lastname.charAt(0).toUpperCase() +
+              authUser.lastname.slice(1);
+          }
+        }
+
+        const updatedActivities = data.map((activity) => ({
+          ...activity,
+          username: fullName,
+        }));
+
+        setActivities(updatedActivities);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    if (userId) {
+      fetchActivities();
+    } else {
+      setError("No user ID provided in localStorage");
+    }
+  }, [userId]);
+
+  const handleDeleteActivity = (id) => {
+    confirmDelete(
+      () => deleteActivityById(id),
+      () =>
+        setActivities((prev) => prev.filter((activity) => activity.id !== id)),
+      "Activity log"
+    );
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })} ${date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })}`;
+  };
+
+  const getRole = (activity) => {
+    if (activity.role) return activity.role;
+    const details =
+      activity.details?.toLowerCase() || activity.action?.toLowerCase() || "";
+    if (details.includes("admin")) return "Admin";
+    if (details.includes("vendor")) return "Vendor";
+    if (details.includes("client") || details.includes("order"))
+      return "Client";
+    return "Unknown";
+  };
+
+  // Columns for the table
   const columns = useMemo(
     () => [
       {
         Header: "Full Name",
-        accessor: "fullName",
+        accessor: "username",
         disableFilters: true,
         width: 120,
         Cell: ({ value }) => (
@@ -32,34 +115,51 @@ const ActivityLog = () => {
             className="text-nowrap text-truncate d-block"
             style={{ maxWidth: "120px" }}
           >
-            {value}
+            {value || "Unknown"}
           </span>
         ),
       },
       {
         Header: "Activity Log",
-        accessor: "activityLog",
+        accessor: "details",
         disableFilters: true,
-        width: 300,
-        Cell: ({ value }) => (
-          <span className="text-truncate d-block" style={{ maxWidth: "300px" }}>
-            {value}
-          </span>
+        width: 200,
+        Cell: ({ row }) => (
+          <div
+            className="d-flex align-items-start"
+            style={{ alignItems: "flex-start" }}
+          >
+            <span
+              className="text-truncate"
+              style={{
+                maxWidth: "200px",
+                display: "inline-block",
+                whiteSpace: "normal",
+              }}
+            >
+              {row.original.details || row.original.action}
+            </span>
+          </div>
         ),
       },
       {
         Header: "Time",
-        accessor: "time",
+        accessor: "created_at",
         disableFilters: true,
-        width: 100,
-        Cell: ({ value }) => <span className="text-nowrap">{value}</span>,
+        width: 150,
+        Cell: ({ value }) => (
+          <span className="text-nowrap">{formatDate(value)}</span>
+        ),
       },
       {
         Header: "Action",
         disableFilters: true,
         Cell: ({ row }) => (
           <div className="d-flex gap-2">
-            <button className="btn btn-danger btn-sm px-2">
+            <button
+              className="btn btn-danger btn-sm px-2"
+              onClick={() => handleDeleteActivity(row.original.id)}
+            >
               <FiTrash2 size={14} />
             </button>
           </div>
@@ -70,208 +170,78 @@ const ActivityLog = () => {
     []
   );
 
-  const activityData = useMemo(
-    () => [
-      {
-        id: 1,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "4 hours ago",
-        date: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 2,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "17 hours ago",
-        date: new Date(Date.now() - 17 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 3,
-        fullName: "john doe",
-        activityLog: "User Logout [email: john.doe@eraxon.com, Role: Vendor]",
-        time: "1 day ago",
-        date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        role: "Vendor",
-      },
-      {
-        id: 4,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "4 days ago",
-        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 5,
-        fullName: "jane smith",
-        activityLog:
-          "Order Created [email: jane.smith@eraxon.com, Role: Client]",
-        time: "5 days ago",
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Client",
-      },
-      {
-        id: 6,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "6 days ago",
-        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 7,
-        fullName: "mike brown",
-        activityLog:
-          "Activity Updated [email: mike.brown@eraxon.com, Role: Vendor]",
-        time: "1 week ago",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Vendor",
-      },
-      {
-        id: 8,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "1 week ago",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 9,
-        fullName: "sarah lee",
-        activityLog:
-          "Order Completed [email: sarah.lee@eraxon.com, Role: Client]",
-        time: "8 days ago",
-        date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Client",
-      },
-      {
-        id: 10,
-        fullName: "admin crm",
-        activityLog: "User Logout [email: admin@eraxon.com, Role: Admin]",
-        time: "9 days ago",
-        date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 11,
-        fullName: "david kim",
-        activityLog:
-          "Activity Created [email: david.kim@eraxon.com, Role: Vendor]",
-        time: "10 days ago",
-        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Vendor",
-      },
-      {
-        id: 12,
-        fullName: "admin crm",
-        activityLog: "User Login [email: admin@eraxon.com, Role: Admin]",
-        time: "11 days ago",
-        date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 13,
-        fullName: "emily chen",
-        activityLog:
-          "Order Cancelled [email: emily.chen@eraxon.com, Role: Client]",
-        time: "12 days ago",
-        date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Client",
-      },
-      {
-        id: 14,
-        fullName: "admin crm",
-        activityLog: "User Logout [email: admin@eraxon.com, Role: Admin]",
-        time: "13 days ago",
-        date: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Admin",
-      },
-      {
-        id: 15,
-        fullName: "peter wong",
-        activityLog:
-          "Activity Rejected [email: peter.wong@eraxon.com, Role: Vendor]",
-        time: "2 weeks ago",
-        date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        role: "Vendor",
-      },
-    ],
-    []
-  );
-
   // Get unique clients and vendors for dropdowns
   const clientOptions = useMemo(() => {
     const uniqueClients = new Set();
-    activityData.forEach((activity) => {
-      if (activity.role === "Client" || activity.role === "Admin") {
-        uniqueClients.add(activity.fullName);
+    activities.forEach((activity) => {
+      const role = getRole(activity);
+      if (role === "Client" || role === "Admin") {
+        uniqueClients.add(activity.username || "Unknown");
       }
     });
     return Array.from(uniqueClients).map((client) => ({
       value: client,
       label: client,
     }));
-  }, [activityData]);
+  }, [activities]);
 
   const vendorOptions = useMemo(() => {
     const uniqueVendors = new Set();
-    activityData.forEach((activity) => {
-      if (activity.role === "Vendor") {
-        uniqueVendors.add(activity.fullName);
+    activities.forEach((activity) => {
+      if (getRole(activity) === "Vendor") {
+        uniqueVendors.add(activity.username || "Unknown");
       }
     });
     return Array.from(uniqueVendors).map((vendor) => ({
       value: vendor,
       label: vendor,
     }));
-  }, [activityData]);
+  }, [activities]);
 
+  // Filter activities
   const filteredActivities = useMemo(() => {
-    let filtered = activityData.filter((activity) =>
+    let filtered = activities.filter((activity) =>
       Object.values(activity).some((val) =>
         String(val).toLowerCase().includes(searchText.toLowerCase())
       )
     );
 
-    // Apply client filter if selected
     if (selectedClient) {
       filtered = filtered.filter(
         (activity) =>
-          activity.fullName.toLowerCase() === selectedClient.value.toLowerCase()
+          (activity.username || "Unknown").toLowerCase() ===
+          selectedClient.value.toLowerCase()
       );
     }
 
-    // Apply vendor filter if selected
     if (selectedVendor) {
       filtered = filtered.filter(
         (activity) =>
-          activity.fullName.toLowerCase() === selectedVendor.value.toLowerCase()
+          (activity.username || "Unknown").toLowerCase() ===
+          selectedVendor.value.toLowerCase()
       );
     }
 
-    // Apply date range filter if selected
     if (startDate) {
       const start = new Date(startDate);
       filtered = filtered.filter(
-        (activity) => new Date(activity.date) >= start
+        (activity) => new Date(activity.created_at) >= start
       );
     }
 
     if (endDate) {
       const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Include entire end day
-      filtered = filtered.filter((activity) => new Date(activity.date) <= end);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(
+        (activity) => new Date(activity.created_at) <= end
+      );
     }
 
-    // Sort filtered data in descending order by date
-    return filtered.sort((a, b) => {
-      return new Date(b.date) - new Date(a.date);
-    });
+    return filtered.sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
   }, [
-    activityData,
+    activities,
     searchText,
     selectedClient,
     selectedVendor,
@@ -297,6 +267,12 @@ const ActivityLog = () => {
         <Breadcrumb title="ACTIVITY LOG" breadcrumbItems={breadcrumbItems} />
         <Card className="shadow-sm">
           <CardBody className="p-3 p-md-4">
+            {/* Success and Error Display */}
+            {successMessage && (
+              <div className="alert alert-success mb-3">{successMessage}</div>
+            )}
+            {error && <div className="alert alert-danger mb-3">{error}</div>}
+
             {/* Mobile Filter Toggle Button */}
             <div className="d-md-none mb-3">
               <button
@@ -412,10 +388,9 @@ const ActivityLog = () => {
                 className="d-flex align-items-center position-relative"
                 style={{ width: "250px" }}
               >
-                <FiSearch className="position-absolute ms-3" size={16} />
                 <input
                   type="text"
-                  className="form-control ps-5"
+                  className="form-control"
                   placeholder="Search activities..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
@@ -425,16 +400,20 @@ const ActivityLog = () => {
 
             {/* Table Section */}
             <div className="table-responsive">
-              <TableContainer
-                columns={columns}
-                data={filteredActivities}
-                isPagination={true}
-                iscustomPageSize={true}
-                isBordered={false}
-                customPageSize={pageSize}
-                className="custom-table"
-                theadClassName="table-light"
-              />
+              {activities.length === 0 && !error ? (
+                <p className="text-muted">No activity logs found.</p>
+              ) : (
+                <TableContainer
+                  columns={columns}
+                  data={filteredActivities}
+                  isPagination={true}
+                  iscustomPageSize={true}
+                  isBordered={false}
+                  customPageSize={pageSize}
+                  className="custom-table"
+                  theadClassName="table-light"
+                />
+              )}
             </div>
           </CardBody>
         </Card>

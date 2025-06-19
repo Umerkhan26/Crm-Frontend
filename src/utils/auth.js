@@ -1,16 +1,11 @@
 // utils/auth.js
-export function isTokenExpired(token) {
-  if (!token) return true;
-
+import { jwtDecode } from "jwt-decode";
+export const isTokenExpired = (token) => {
   try {
-    const [, payload] = token.split(".");
-    const decoded = JSON.parse(atob(payload));
-    const exp = decoded.exp;
-    if (!exp) return true;
-
+    const decoded = jwtDecode(token);
     const currentTime = Date.now() / 1000;
-    return exp < currentTime;
-  } catch (e) {
+    return decoded.exp < currentTime;
+  } catch (error) {
     return true;
   }
-}
+};

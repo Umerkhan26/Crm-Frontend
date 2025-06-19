@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, useState } from "react";
 import { Container, Row, Col } from "reactstrap";
 
 //Import Breadcrumb
@@ -15,91 +15,72 @@ import RevenueByLocations from "./RevenueByLocations";
 import ChatBox from "./ChatBox";
 import LatestTransactions from "./LatestTransactions";
 
-class Dashboard extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      breadcrumbItems: [
-        { title: "Eraxon", link: "/" },
-        { title: "Dashboard", link: "#" },
-      ],
-      reports: [
-        {
-          icon: "ri-stack-line",
-          title: "Orders",
-          value: "1452",
-          rate: "2.4%",
-          desc: "From previous period",
-        },
-        {
-          icon: "ri-store-2-line",
-          title: "Vendors",
-          value: "2",
-          rate: "2.4%",
-          desc: "From previous period",
-        },
-        {
-          icon: "ri-briefcase-4-line",
-          title: "Clients",
-          value: "6",
-          rate: "2.4%",
-          desc: "From previous period",
-        },
-        {
-          icon: "ri-briefcase-4-line",
-          title: "Total Leads",
-          value: "0",
-          rate: "2.4%",
-          desc: "From previous period",
-        },
-      ],
-    };
-  }
+const Dashboard = () => {
+  const [breadcrumbItems] = useState([
+    { title: "Eraxon", link: "/" },
+    { title: "Dashboard", link: "#" },
+  ]);
 
-  render() {
-    return (
-      <React.Fragment>
-        <div className="page-content">
-          <Container fluid>
-            <Breadcrumbs
-              title="Dashboard"
-              breadcrumbItems={this.state.breadcrumbItems}
-            />
-            <Row>
-              <Col xl={8}>
-                <Row>
-                  <MiniWidgets reports={this.state.reports} />
-                </Row>
-                {/* revenue Analytics */}
-                <RevenueAnalytics />
-              </Col>
+  const [reports] = useState([
+    {
+      icon: "ri-stack-line",
+      title: "Orders",
+      value: "1452",
+      rate: "2.4%",
+      desc: "From previous period",
+    },
+    {
+      icon: "ri-store-2-line",
+      title: "Vendors",
+      value: "2",
+      rate: "2.4%",
+      desc: "From previous period",
+    },
+    {
+      icon: "ri-briefcase-4-line",
+      title: "Clients",
+      value: "6",
+      rate: "2.4%",
+      desc: "From previous period",
+    },
+    {
+      icon: "ri-briefcase-4-line",
+      title: "Total Leads",
+      value: "0",
+      rate: "2.4%",
+      desc: "From previous period",
+    },
+  ]);
 
-              <Col xl={4}>
-                {/* sales Analytics */}
-                <SalesAnalytics />
+  const userId = localStorage.getItem("userId");
 
-                {/* earning reports */}
-                <EarningReports />
-              </Col>
-            </Row>
-
-            <Row>
-              {/* recent activity */}
-              <RecentlyActivity />
-
-              {/* latest transactions */}
-              <LatestTransactions />
-            </Row>
-
-            <Row>
-              {/* chat box */}
-              {/* <ChatBox /> */}
-            </Row>
-          </Container>
-        </div>
-      </React.Fragment>
-    );
-  }
-}
+  return (
+    <React.Fragment>
+      <div className="page-content">
+        <Container fluid>
+          <Breadcrumbs title="Dashboard" breadcrumbItems={breadcrumbItems} />
+          <Row>
+            <Col xl={8}>
+              <Row>
+                <MiniWidgets reports={reports} />
+              </Row>
+              <RevenueAnalytics />
+            </Col>
+            <Col xl={4}>
+              <SalesAnalytics />
+              <EarningReports />
+            </Col>
+          </Row>
+          <Row>
+            <RecentlyActivity userId={userId} />{" "}
+            {/* Fallback to 1 if no userId */}
+            <LatestTransactions />
+          </Row>
+          <Row>{/* <ChatBox /> */}</Row>
+        </Container>
+      </div>
+    </React.Fragment>
+  );
+};
 
 export default Dashboard;

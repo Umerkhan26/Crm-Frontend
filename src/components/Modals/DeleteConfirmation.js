@@ -11,7 +11,7 @@ const useDeleteConfirmation = () => {
           .swal2-popup {
             width: 300px !important;
             height: 160px !important;
-            padding: 10px !important;
+            padding: 10px 0px !important;
             font-size: 14px !important;
           }
           .swal2-title {
@@ -21,7 +21,7 @@ const useDeleteConfirmation = () => {
             font-size: 14px !important;
           }
           .swal2-actions {
-            margin-top: 8px !important;
+            margin-top: -12px !important;
           }
           .swal2-confirm,
           .swal2-cancel {

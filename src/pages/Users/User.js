@@ -170,6 +170,7 @@ const AllUsers = () => {
   };
 
   const filteredUsers = useMemo(() => {
+    if (!Array.isArray(users)) return []; // Add this safety check
     if (selectedUserType === "All User Type") return users;
     return users.filter(
       (user) =>

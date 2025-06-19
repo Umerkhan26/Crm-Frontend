@@ -79,7 +79,6 @@ const authProtectedRoutes = [
   { path: "/email-action", component: <EmailNotification /> },
   { path: "/all-notifications", component: <Notification /> },
   { path: "/all-activities", component: <ActivityLog /> },
-  { path: "/all-activities", component: <ActivityLog /> },
   { path: "/settings", component: <SystemSettingsForm /> },
   { path: "/create-role", component: <CreateRole /> },
   { path: "/role-index", component: <AllRole /> },

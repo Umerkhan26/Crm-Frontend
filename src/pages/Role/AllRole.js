@@ -218,7 +218,6 @@ import TableContainer from "../../components/Common/TableContainer";
 import { FaTrash } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
 import { useMemo, useEffect, useState } from "react";
-import { API_URL } from "../../services/auth";
 import { useNavigate } from "react-router-dom";
 import { deleteRole, getAllRoles } from "../../services/roleService";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
@@ -246,14 +245,16 @@ const AllRole = () => {
           limit: pageSize,
         });
 
+        console.log("API Response:", response);
+
         if (!response.success) {
           throw new Error(response.message || "Failed to fetch roles");
         }
 
-        console.log("API Response:", response); // Debug the response
+        console.log("API Response:", response);
         setRoles(response.data);
-        setTotalItems(response.totalItems); // Ensure this is set
-        setTotalPages(response.totalPages); // Ensure this is set
+        setTotalItems(response.totalItems);
+        setTotalPages(response.totalPages);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -291,7 +292,7 @@ const AllRole = () => {
 
   const handlePageSizeChange = (e) => {
     setPageSize(parseInt(e.target.value));
-    setCurrentPage(1); // Reset to first page when page size changes
+    setCurrentPage(1);
   };
 
   const breadcrumbItems = [
@@ -304,7 +305,7 @@ const AllRole = () => {
     () => [
       {
         Header: "ID",
-        accessor: (_row, i) => (currentPage - 1) * pageSize + i + 1, // Adjust ID based on page
+        accessor: (_row, i) => (currentPage - 1) * pageSize + i + 1,
         disableFilters: true,
       },
       {
@@ -318,8 +319,8 @@ const AllRole = () => {
         disableFilters: true,
         Cell: ({ value }) => {
           const [showAll, setShowAll] = useState(false);
-          const visiblePermissions = showAll ? value : value?.slice(0, 3) || [];
-          const remainingCount = value?.length - 3 || 0;
+          const visiblePermissions = showAll ? value : value?.slice(0, 5) || [];
+          const remainingCount = value?.length - 5 || 0;
 
           return (
             <div style={{ maxWidth: "auto" }}>
