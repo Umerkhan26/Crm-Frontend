@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { connect } from "react-redux";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -19,7 +19,8 @@ import "./assets/scss/theme.scss";
 import fakeBackend from "./helpers/AuthType/fakeBackend";
 import AppRoute from "./routes/route";
 import { ToastContainer } from "react-toastify";
-import { isTokenExpired } from "./utils/auth";
+// import { isTokenExpired } from "./utils/auth";
+import TokenExpiryHandler from "./utils/TokenExpiryHandler";
 
 // Activating fake backend
 fakeBackend();
@@ -31,15 +32,15 @@ class App extends Component {
     this.getLayout = this.getLayout.bind(this);
   }
 
-  componentDidMount() {
-    this.tokenCheckInterval = setInterval(() => {
-      const token = localStorage.getItem("token");
-      if (token && isTokenExpired(token)) {
-        localStorage.clear(); // Clear session
-        this.setState({ shouldLogout: true });
-      }
-    }, 60000); // Check every minute
-  }
+  // componentDidMount() {
+  //   this.tokenCheckInterval = setInterval(() => {
+  //     const token = localStorage.getItem("token");
+  //     if (token && isTokenExpired(token)) {
+  //       localStorage.clear(); // Clear session
+  //       this.setState({ shouldLogout: true });
+  //     }
+  //   }, 60000); // Check every minute
+  // }
 
   componentWillUnmount() {
     clearInterval(this.tokenCheckInterval);
@@ -63,9 +64,9 @@ class App extends Component {
   };
 
   render() {
-    if (this.state.shouldLogout) {
-      return <Navigate to="/login" replace />;
-    }
+    // if (this.state.shouldLogout) {
+    //   return <Navigate to="/login" replace />;
+    // }
 
     const Layout = this.getLayout();
     return (
@@ -93,6 +94,7 @@ class App extends Component {
 						))}
 					</Routes>
 				</Router> */}
+        <TokenExpiryHandler />
         <ToastContainer position="top-right" autoClose={3000} />
         <Routes>
           {publicRoutes.map((route, idx) => (

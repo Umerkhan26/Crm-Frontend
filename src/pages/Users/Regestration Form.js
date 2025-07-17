@@ -4,7 +4,7 @@ import { Row, Col, Card, CardBody, Button, Label, Container } from "reactstrap";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 import { toast } from "react-toastify";
 import VendorForm from "./Registration/VenderForm";
-import ClientForm from "./Registration/ClientForm";
+// import ClientForm from "./Registration/ClientForm";
 import { useLocation, useNavigate } from "react-router-dom";
 import { registerUser, updateUserById } from "../../services/auth";
 import { ClipLoader } from "react-spinners";
@@ -70,7 +70,7 @@ const RegisterUser = () => {
             firstname: user.user.firstname || "",
             lastname: user.user.lastname || "",
             email: user.user.email || "",
-            password: "", // Do not prefill for security
+            password: "",
             phone: user.user.phone || "",
             address: user.user.address || "",
             website: user.user.website || "",
@@ -79,7 +79,7 @@ const RegisterUser = () => {
             userImage: null,
             referred_to: user.user.referred_to || "",
             smtpemail: user.user.smtpemail || "",
-            smtppassword: "",
+            smtppassword: user.user.smtppassword || "",
             smtpincomingserver: user.user.smtpincomingserver || "",
             smtpoutgoingserver: user.user.smtpoutgoingserver || "",
             smtpport: user.user.smtpport || "",
@@ -150,6 +150,7 @@ const RegisterUser = () => {
       ...formData,
       roleId: selectedRole?.value,
       roleName: selectedRole?.label,
+      userrole: selectedRole?.label,
     };
 
     const formPayload = new FormData();
@@ -308,6 +309,7 @@ const RegisterUser = () => {
                             placeholder="Password"
                             type="password"
                             className="form-control"
+                            required
                           />
                         </div>
                       </Col>

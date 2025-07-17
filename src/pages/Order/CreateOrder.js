@@ -92,12 +92,11 @@ const NewOrder = () => {
         alert(error.message);
       }
     };
-
     loadCampaigns();
   }, []);
 
   useEffect(() => {
-    if (editData) {
+    if (editData && campaignOptions.length > 0) {
       setFormData({
         agent: editData.agent || "",
         campaign_id:
@@ -110,11 +109,12 @@ const NewOrder = () => {
           null,
         state: stateOptions.find((opt) => opt.value === editData.state) || null,
         priorityLevel:
-          priorityOptions.find((opt) => opt.value === editData.priorityLevel) ||
-          null,
-        ageRange: editData.ageRange || "",
-        leadRequested: editData.leadRequested?.toString() || "",
-        fbLink: editData.fbLink || "",
+          priorityOptions.find(
+            (opt) => opt.value === editData.priority_level
+          ) || null,
+        ageRange: editData.age_range || "",
+        leadRequested: editData.lead_requested?.toString() || "",
+        fbLink: editData.fb_link || "",
         notes: editData.notes || "",
         areaToUse: editData.area_to_use || "",
         order_datetime: editData.order_datetime

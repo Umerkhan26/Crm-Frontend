@@ -35,6 +35,7 @@ const ActivityLog = () => {
     const fetchActivities = async () => {
       try {
         const data = await getActivitiesByUserId(userId);
+        console.log("📦 Raw Activity Data:", data);
 
         const authUserString = localStorage.getItem("authUser");
         let fullName = "Unknown";
@@ -54,6 +55,8 @@ const ActivityLog = () => {
           ...activity,
           username: fullName,
         }));
+
+        console.log("✅ Updated Activities:");
 
         setActivities(updatedActivities);
         setError(null);

@@ -38,9 +38,7 @@ const VendorForm = ({
         </Col>
         <Col md="6">
           <div className="mb-3">
-            <Label className="form-label">
-              SMTP Email / Username <span className="text-danger">*</span>
-            </Label>
+            <Label className="form-label">SMTP Email / Username</Label>
             <input
               name="smtpemail"
               value={formData.smtpemail}
@@ -48,15 +46,12 @@ const VendorForm = ({
               placeholder="SMTP Email/Username"
               type="text"
               className="form-control"
-              required
             />
           </div>
         </Col>
         <Col md="6">
           <div className="mb-3">
-            <Label className="form-label">
-              SMTP Password <span className="text-danger">*</span>
-            </Label>
+            <Label className="form-label">SMTP Password</Label>
             <input
               name="smtppassword"
               value={formData.smtppassword}
@@ -64,7 +59,6 @@ const VendorForm = ({
               placeholder="SMTP Password"
               type="password"
               className="form-control"
-              required
             />
           </div>
         </Col>
@@ -73,9 +67,7 @@ const VendorForm = ({
       <Row>
         <Col md="6">
           <div className="mb-3">
-            <Label className="form-label">
-              SMTP Incoming Server <span className="text-danger">*</span>
-            </Label>
+            <Label className="form-label">SMTP Incoming Server</Label>
             <input
               name="smtpincomingserver"
               value={formData.smtpincomingserver}
@@ -83,15 +75,12 @@ const VendorForm = ({
               placeholder="e.g., abc.example.com"
               type="text"
               className="form-control"
-              required
             />
           </div>
         </Col>
         <Col md="6">
           <div className="mb-3">
-            <Label className="form-label">
-              SMTP Outgoing Server <span className="text-danger">*</span>
-            </Label>
+            <Label className="form-label">SMTP Outgoing Server</Label>
             <input
               name="smtpoutgoingserver"
               value={formData.smtpoutgoingserver}
@@ -99,7 +88,6 @@ const VendorForm = ({
               placeholder="e.g., abc.example.com"
               type="text"
               className="form-control"
-              required
             />
           </div>
         </Col>
@@ -108,9 +96,7 @@ const VendorForm = ({
       <Row>
         <Col md="6">
           <div className="mb-3">
-            <Label className="form-label">
-              SMTP Port <span className="text-danger">*</span>
-            </Label>
+            <Label className="form-label">SMTP Port</Label>
             <input
               name="smtpport"
               value={formData.smtpport}
@@ -118,7 +104,6 @@ const VendorForm = ({
               placeholder="SMTP Port"
               type="number"
               className="form-control"
-              required
             />
           </div>
         </Col>

@@ -29,9 +29,11 @@ import {
   FaBan,
   FaTrash,
 } from "react-icons/fa";
+import * as XLSX from "xlsx";
 import { FiEdit2 } from "react-icons/fi";
 import AddLeadModal from "../../components/Modals/AddLeadModal";
 import ImportLeadsModal from "../../components/Modals/ImportLeadsModal";
+import ColumnMappingModal from "../../components/Modals/ColumnMappingModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   deleteOrder,
@@ -41,12 +43,12 @@ import {
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
-import useBlockUnblockConfirmation from "../../components/Modals/useBlockUnblockConfirmation";
 
 const Allorders = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { confirmBlockUnblock } = useBlockUnblockConfirmation();
+  const [excelColumns, setExcelColumns] = useState([]);
+  const [excelFile, setExcelFile] = useState(null);
   const { confirmDelete } = useDeleteConfirmation();
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
@@ -56,6 +58,7 @@ const Allorders = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [ordersData, setOrdersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -72,6 +75,7 @@ const Allorders = () => {
     setModalOpen(!modalOpen);
   };
   const toggleImportModal = () => setImportModalOpen(!importModalOpen);
+  const toggleMappingModal = () => setMappingModalOpen(!mappingModalOpen);
   const toggleCategoryDropdown = () => setCategoryDropdownOpen((prev) => !prev);
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
 
@@ -94,13 +98,14 @@ const Allorders = () => {
           pagination.currentPage,
           pagination.pageSize
         );
+
+        console.log("all orders", response);
         setOrdersData(response.data);
         setPagination((prev) => ({
           ...prev,
           totalPages: response.totalPages,
           totalItems: response.totalItems,
         }));
-        console.log("All order", response);
       } catch (error) {
         console.error("Failed to load orders", error);
         toast.error("Failed to load orders");
@@ -111,8 +116,33 @@ const Allorders = () => {
     loadOrders();
   }, [pagination.currentPage, pagination.pageSize]);
 
-  const handleImport = (file) => {
-    console.log("Importing file:", file.name);
+  const handleFileUpload = (file, data) => {
+    const workbook = XLSX.read(data, { type: "binary" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    if (jsonData.length > 0) {
+      setExcelColumns(jsonData[0]);
+      setExcelFile(file); // Store the file
+    }
+  };
+
+  const handleMappingComplete = (response) => {
+    const { imported, skipped } = response;
+    toast.success(
+      `${imported} leads imported successfully. Skipped: ${skipped.length}`
+    );
+    // Update orders data if needed
+    setOrdersData((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === selectedOrder.id
+          ? {
+              ...order,
+              remainingLeads: order.remainingLeads - imported,
+            }
+          : order
+      )
+    );
   };
 
   const handleEdit = (order) => {
@@ -146,7 +176,7 @@ const Allorders = () => {
             font-size: 18px !important;
           }
           .swal2-html-container {
-            font-size: 14px !important;
+            fontSize: 14px !important;
           }
           .swal2-actions {
             margin-top: 10px !important;
@@ -269,6 +299,7 @@ const Allorders = () => {
       )
     );
   };
+
   const columns = useMemo(
     () => [
       {
@@ -313,7 +344,10 @@ const Allorders = () => {
               color="success"
               size="sm"
               className="d-flex align-items-center justify-content-center text-nowrap"
-              onClick={toggleImportModal}
+              onClick={() => {
+                setSelectedOrder(cellProps.row.original);
+                toggleImportModal();
+              }}
             >
               <FaFileImport className="me-1" /> Import
             </Button>
@@ -348,7 +382,6 @@ const Allorders = () => {
         ),
         width: 150,
       },
-
       {
         Header: "Priority Level",
         accessor: "priority_level",
@@ -420,7 +453,6 @@ const Allorders = () => {
       <div className="page-content">
         <Container fluid>
           <Breadcrumbs title="ALL ORDERS" breadcrumbItems={breadcrumbItems} />
-
           <Row className="mb-3">
             <Col md={12}>
               <div className="d-flex w-80 gap-2">
@@ -475,7 +507,6 @@ const Allorders = () => {
               </div>
             </Col>
           </Row>
-
           <Card>
             <CardBody>
               <Row className="mb-3">
@@ -568,7 +599,6 @@ const Allorders = () => {
                   </Dropdown>
                 </Col>
               </Row>
-
               <TableContainer
                 columns={columns || []}
                 data={filteredOrders || []}
@@ -585,18 +615,30 @@ const Allorders = () => {
           </Card>
         </Container>
       </div>
-
       <AddLeadModal
         isOpen={modalOpen}
         toggle={() => setModalOpen(!modalOpen)}
         onSubmit={handleLeadSubmit}
         selectedOrder={selectedOrder}
       />
-
       <ImportLeadsModal
         isOpen={importModalOpen}
         toggle={toggleImportModal}
-        onImport={handleImport}
+        onFileUpload={handleFileUpload}
+        onMapping={(file) => {
+          setExcelFile(file);
+          toggleImportModal();
+          toggleMappingModal();
+        }}
+        selectedOrder={selectedOrder}
+      />
+      <ColumnMappingModal
+        isOpen={mappingModalOpen}
+        toggle={toggleMappingModal}
+        onImport={handleMappingComplete}
+        selectedOrder={selectedOrder}
+        excelColumns={excelColumns}
+        selectedFile={excelFile}
       />
     </React.Fragment>
   );

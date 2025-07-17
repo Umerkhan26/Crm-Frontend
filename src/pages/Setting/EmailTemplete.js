@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   EditorState,
   ContentState,
@@ -28,6 +28,10 @@ import {
 } from "reactstrap";
 import { FiEdit2 } from "react-icons/fi";
 import UserDetailModal from "../../components/Modals/UserDetailModal";
+import {
+  getEmailTemplates,
+  updateEmailTemplate,
+} from "../../services/emailTemplateService";
 
 const EmailTemplate = () => {
   // State for modal and form
@@ -53,121 +57,32 @@ const EmailTemplate = () => {
     });
     setUserDetailModal(true);
   };
+  const [templatesData, setTemplatesData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const templatesData = [
-    {
-      id: 1,
-      subject: "Add Lead By Admin",
-      message: "A New lead has been added please check.",
-      userType: "Admin",
-      event: "Add Lead",
-      action: "active",
-    },
-    {
-      id: 2,
-      subject: "Add Lead By Vendor",
-      message: "A New lead has been added by Vendor.",
-      userType: "Vendor",
-      event: "Add Lead",
-      action: "active",
-    },
-    {
-      id: 3,
-      subject: "Deleted Lead By Admin",
-      message: "Lead deleted by Admin",
-      userType: "Admin",
-      event: "Delete Lead",
-      action: "active",
-    },
-    {
-      id: 4,
-      subject: "Deleted Lead By Vendor",
-      message: "Lead Deleted By Vendor",
-      userType: "Vendor",
-      event: "Delete Lead",
-      action: "active",
-    },
-    {
-      id: 5,
-      subject: "Updates Lead By Admin",
-      message: "Lead updated by admin",
-      userType: "Admin",
-      event: "Update Lead",
-      action: "active",
-    },
-    {
-      id: 6,
-      subject: "Updates Lead By Vendor",
-      message: "Lead updated by vendor",
-      userType: "Vendor",
-      event: "Update Lead",
-      action: "active",
-    },
-    {
-      id: 7,
-      subject: "Lead accepts by client",
-      message: "Lead accepted by client",
-      userType: "Client",
-      event: "Accept Lead",
-      action: "active",
-    },
-    {
-      id: 8,
-      subject: "Lead Rejected by Client",
-      message: "Lead Rejected by Client.",
-      userType: "Client",
-      event: "Reject Lead",
-      action: "active",
-    },
-    {
-      id: 9,
-      subject: "New Order Created by Admin",
-      message: "New Order Created by Admin.",
-      userType: "Admin",
-      event: "Add Order",
-      action: "active",
-    },
-    {
-      id: 10,
-      subject: "Order deleted by Admin",
-      message: "Order deleted by Admin",
-      userType: "Admin",
-      event: "Delete Order",
-      action: "active",
-    },
-    {
-      id: 11,
-      subject: "Order Updated by Admin",
-      message: "Order Updated by Admin",
-      userType: "Admin",
-      event: "Update Campaign",
-      action: "active",
-    },
-    {
-      id: 12,
-      subject: "Lead In-Review by Client",
-      message: "Lead In-Review by Client.",
-      userType: "Client",
-      event: "In-Review Lead",
-      action: "active",
-    },
-    {
-      id: 13,
-      subject: "Add Campaign By Admin",
-      message: "A new Campaign Added By Admin",
-      userType: "Admin",
-      event: "Add Campaign",
-      action: "active",
-    },
-  ];
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const data = await getEmailTemplates();
+        setTemplatesData(data);
+        console.log("EMAIL TEMPLETE", data);
+      } catch (err) {
+        console.error("Failed to fetch templates:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTemplates();
+  }, []);
 
   const toggleModal = () => setModal(!modal);
 
   const handleEditClick = (template) => {
     setCurrentTemplate(template);
 
-    // Convert HTML to editor state
-    const blocksFromHTML = convertFromHTML(template.message || "");
+    // Convert HTML from bodyTemplate to editor state
+    const blocksFromHTML = convertFromHTML(template.bodyTemplate || "");
     const contentState = ContentState.createFromBlockArray(
       blocksFromHTML.contentBlocks,
       blocksFromHTML.entityMap
@@ -177,74 +92,85 @@ const EmailTemplate = () => {
     toggleModal();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const updatedTemplate = {
-      ...currentTemplate,
-      message: draftToHtml(convertToRaw(editorState.getCurrentContent())),
-    };
+    try {
+      const updatedTemplate = {
+        ...currentTemplate,
+        name: currentTemplate.name, // Subject
+        bodyTemplate: draftToHtml(
+          convertToRaw(editorState.getCurrentContent())
+        ), // Message content
+      };
 
-    console.log("Updated template:", updatedTemplate);
-    toggleModal();
+      // Call the update API
+      await updateEmailTemplate(currentTemplate.id, updatedTemplate);
 
-    // In a real app, you would update the templatesData state here
-    // with the updated template and possibly make an API call
+      // Update local state if needed
+      setTemplatesData(
+        templatesData.map((template) =>
+          template.id === currentTemplate.id ? updatedTemplate : template
+        )
+      );
+
+      toggleModal();
+    } catch (error) {
+      console.error("Failed to update template:", error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const columns = useMemo(
     () => [
       {
         Header: "Subject",
-        accessor: "subject",
+        accessor: "name", // Use subjectTemplate directly
         disableFilters: true,
         Cell: ({ row }) => (
           <div
             onClick={() => handleRowClick(row)}
             style={{ cursor: "pointer" }}
           >
-            {row.original.subject}
+            {row.original.name}
           </div>
         ),
       },
       {
         Header: "Message",
-        accessor: "message",
+        accessor: "bodyTemplate",
         disableFilters: true,
-        Cell: ({ value, row }) => (
-          <div
-            onClick={() => handleRowClick(row)}
-            style={{ cursor: "pointer" }}
-            dangerouslySetInnerHTML={{
-              __html: value.includes("<p>") ? value : `<p>${value}</p>`,
-            }}
-          />
-        ),
-      },
-      {
-        Header: "User Type",
-        accessor: "userType",
-        disableFilters: true,
-        Cell: ({ row }) => (
-          <div
-            onClick={() => handleRowClick(row)}
-            style={{ cursor: "pointer" }}
-          >
-            {row.original.userType}
-          </div>
-        ),
-      },
-      {
-        Header: "Event",
-        accessor: "event",
-        disableFilters: true,
+        Cell: ({ value, row }) => {
+          // Create a temporary div to parse the HTML
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = value || "";
+          const textContent = tempDiv.textContent || tempDiv.innerText || "";
 
+          return (
+            <div
+              onClick={() => handleRowClick(row)}
+              style={{
+                cursor: "pointer",
+                minHeight: "20px",
+                padding: "5px",
+                whiteSpace: "pre-line",
+              }}
+            >
+              {textContent.trim() || "No content available"}
+            </div>
+          );
+        },
+      },
+      {
+        Header: "Service Name",
+        accessor: "serviceName",
+        disableFilters: true,
         Cell: ({ row }) => (
           <div
             onClick={() => handleRowClick(row)}
             style={{ cursor: "pointer" }}
           >
-            {row.original.event}
+            {row.original.serviceName}
           </div>
         ),
       },
@@ -346,11 +272,11 @@ const EmailTemplate = () => {
                 type="text"
                 name="subject"
                 id="subject"
-                value={currentTemplate?.subject || ""}
+                value={currentTemplate?.name || ""}
                 onChange={(e) =>
                   setCurrentTemplate({
                     ...currentTemplate,
-                    subject: e.target.value,
+                    name: e.target.value,
                   })
                 }
                 required

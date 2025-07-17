@@ -179,3 +179,41 @@ export const deleteOrder = async (id) => {
     throw error;
   }
 };
+
+export const importClientLeads = async (file, orderId, mappedData) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("order_id", orderId);
+  formData.append("mappedData", JSON.stringify(mappedData));
+
+  console.log("Data sent from frontend:");
+  console.log("order_id:", orderId);
+  console.log("file:", file);
+  console.log("mappedData:", mappedData);
+  console.log("FormData entries:");
+  for (const [key, value] of formData.entries()) {
+    console.log(`${key}:`, value);
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/client-leads/import`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    console.log("Backend response:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to import leads");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Import client leads error:", error);
+    throw new Error(error.message || "Something went wrong during import");
+  }
+};
