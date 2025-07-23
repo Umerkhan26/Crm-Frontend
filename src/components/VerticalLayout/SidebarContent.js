@@ -411,6 +411,7 @@ import {
 import withRouter from "../Common/withRouter";
 import ModalWrapper from "../Modals/ModalWrapper";
 import SendReferral from "../../pages/Referrals/SendReferrals";
+import MenuItemWithModal from "../Modals/MenuItemWithModal";
 
 const SidebarContent = (props) => {
   const metisRef = useRef(null);
@@ -599,7 +600,7 @@ const SidebarContent = (props) => {
             </ul>
           </li>
 
-          <li>
+          {/* <li>
             <Link
               to="/#"
               className="has-arrow waves-effect"
@@ -653,6 +654,62 @@ const SidebarContent = (props) => {
                 >
                   <SendReferral onSubmit={handleSubmit} />
                 </ModalWrapper>
+              </li>
+              <li>
+                <Link
+                  to="/all-referral"
+                  style={{
+                    display: "block",
+                    padding: "6px 24px 6px 52px",
+                    color: "#6c757d",
+                    textDecoration: "none",
+                    transition: "all 0.3s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "#6c757d")
+                  }
+                  className="waves-effect"
+                >
+                  {props.t("My Referrals")}
+                </Link>
+              </li>
+            </ul>
+          </li> */}
+
+          <li>
+            <Link
+              to="/#"
+              className="has-arrow waves-effect"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 24px",
+                color: "#6c757d",
+                textDecoration: "none",
+                fontSize: "14px",
+                transition: "all 0.3s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#6c757d")}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+              >
+                <i className="ri-group-line"></i>
+                <span style={{ marginLeft: "4px" }}>
+                  {props.t("Referrals")}
+                </span>
+              </div>
+              <i style={{ fontSize: "1rem" }}></i>
+            </Link>
+            <ul className="sub-menu" style={{ paddingLeft: "0" }}>
+              <li>
+                <MenuItemWithModal
+                  title={props.t("Send Referral")}
+                  modalTitle="Client Referral"
+                  ModalContent={<SendReferral onSubmit={handleSubmit} />}
+                />
               </li>
               <li>
                 <Link

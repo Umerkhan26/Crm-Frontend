@@ -77,11 +77,13 @@ export const createOrder = async (payload) => {
   }
 };
 
-export const fetchAllOrders = async (page = 1, limit = 10) => {
+export const fetchAllOrders = async (page = 1, limit = 10, search = "") => {
   try {
     const token = getAuthToken();
     const response = await fetch(
-      `${API_URL}/orders?page=${page}&limit=${limit}`,
+      `${API_URL}/orders?page=${page}&limit=${limit}&search=${encodeURIComponent(
+        search
+      )}`,
       {
         headers: {
           "Content-Type": "application/json",

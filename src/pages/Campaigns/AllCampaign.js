@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { debounce } from "lodash";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Button,
+  Spinner,
 } from "reactstrap";
 import { FiEdit2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +24,7 @@ import { fetchAllOrders } from "../../services/orderService";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const AllCampaigns = () => {
+  // State management
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -29,33 +32,54 @@ const AllCampaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const { confirmDelete } = useDeleteConfirmation();
+  const searchInputRef = useRef(null);
+
+  const fetchData = async (page, limit, search) => {
+    try {
+      setLoading(true);
+      setSearchLoading(true);
+
+      const ordersData = await fetchAllOrders();
+      setOrders(ordersData.data || []);
+
+      const campaignsData = await fetchCampaigns({
+        page,
+        limit,
+        search,
+      });
+
+      setCampaigns(campaignsData.data || []);
+      setTotalItems(campaignsData.totalItems);
+      setTotalPages(campaignsData.totalPages);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setError(error.message || "Failed to load data");
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+      setSearchLoading(false);
+    }
+  };
+
+  const debouncedFetch = debounce(fetchData, 500);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load Orders
-        const ordersData = await fetchAllOrders();
-        setOrders(ordersData.data || []);
+    debouncedFetch(currentPage, entriesPerPage, searchText);
+    return () => debouncedFetch.cancel();
+  }, [currentPage, entriesPerPage, searchText]);
 
-        // Load Campaigns with pagination
-        const campaignsData = await fetchCampaigns({
-          page: currentPage,
-          limit: entriesPerPage,
-        });
-        setCampaigns(campaignsData.data);
-        setTotalItems(campaignsData.totalItems);
-        setTotalPages(campaignsData.totalPages);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast.error("Failed to load campaigns");
-      }
-    };
-
-    loadData();
-  }, [currentPage, entriesPerPage]);
+  const handleSearchInput = (e) => {
+    setSearchText(e.target.value);
+    setCurrentPage(1);
+  };
 
   const toggleDropdown = () => setDropdownOpen((prevState) => !prevState);
 
@@ -82,7 +106,7 @@ const AllCampaigns = () => {
       id: campaign.id,
       name: campaign.campaignName,
       columns:
-        campaign.parsedFields.map((field) => ({
+        campaign.parsedFields?.map((field) => ({
           name: field.col_name,
           slug: field.col_slug,
           type: field.col_type,
@@ -94,33 +118,26 @@ const AllCampaigns = () => {
     navigate("/create-campaign", { state: { editData } });
   };
 
-  const filteredData = campaigns.filter(
-    (campaign) =>
-      campaign?.campaignName &&
-      campaign.campaignName.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   const handleDelete = async (campaignId) => {
-    const isLinkedToOrder = orders.some(
-      (order) => order.campaign_id === campaignId
-    );
+    const isLinkedToOrder = isCampaignLinked(campaignId);
 
     if (isLinkedToOrder) {
       toast.error("Cannot delete: Campaign is linked to an order.");
       return;
     }
 
+    setDeletingId(campaignId);
+
     const deleteFn = () => deleteCampaign(campaignId);
     const onSuccess = async () => {
-      setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
-      setTotalItems((prev) => prev - 1);
-      const newTotalPages = Math.ceil((totalItems - 1) / entriesPerPage);
-      setTotalPages(newTotalPages);
-      if (campaigns.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => prev - 1);
-      } else if (campaigns.length === 1 && currentPage === 1) {
-        setCampaigns([]);
-      }
+      // Refresh the data after successful deletion
+      await fetchData(
+        campaigns.length === 1 && currentPage > 1
+          ? currentPage - 1
+          : currentPage,
+        entriesPerPage,
+        searchText
+      );
     };
 
     confirmDelete(deleteFn, onSuccess, "campaign");
@@ -156,8 +173,8 @@ const AllCampaigns = () => {
     );
   };
 
-  return (
-    <React.Fragment>
+  if (error) {
+    return (
       <div className="page-content">
         <Container fluid>
           <Breadcrumbs
@@ -166,15 +183,56 @@ const AllCampaigns = () => {
           />
           <Card>
             <CardBody>
+              <div className="alert alert-danger">Error: {error}</div>
+            </CardBody>
+          </Card>
+        </Container>
+      </div>
+    );
+  }
+
+  return (
+    <React.Fragment>
+      <div className="page-content" style={{ position: "relative" }}>
+        <Container fluid>
+          <Breadcrumbs
+            title="ALL CAMPAIGNS"
+            breadcrumbItems={breadcrumbItems}
+          />
+          <Card>
+            <CardBody style={{ position: "relative" }}>
+              {loading && (
+                <div
+                  className="d-flex justify-content-center align-items-center"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(255, 255, 255, 0.7)",
+                    zIndex: 10,
+                  }}
+                >
+                  <Spinner color="primary" />
+                </div>
+              )}
+
               <div className="d-flex justify-content-end align-items-end mb-3">
-                <div>
-                  <input
+                <div className="position-relative">
+                  <Input
                     type="text"
+                    innerRef={searchInputRef}
                     className="form-control"
-                    placeholder="Search..."
+                    placeholder="Search campaigns..."
                     value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
+                    onChange={handleSearchInput}
                   />
+                  {searchLoading && (
+                    <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                      <Spinner size="sm" color="secondary" />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -188,66 +246,79 @@ const AllCampaigns = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.map((row) => (
-                      <tr key={row.id}>
-                        <td style={{ fontSize: "13px" }}>
-                          <button
-                            onClick={() => {
-                              sessionStorage.setItem(
-                                "fromCampaignLink",
-                                "true"
-                              );
-                              navigate(`/order-index?campaign=${row.id}`);
-                            }}
-                            style={{
-                              color: "blue",
-                              cursor: "pointer",
-                              background: "none",
-                              border: "none",
-                              padding: 0,
-                              font: "inherit",
-                            }}
-                          >
-                            {row.campaignName}
-                          </button>
-                        </td>
-                        <td style={{ fontSize: "12px" }}>
-                          {formatColumns(row.parsedFields || [])}
-                        </td>
-                        <td>
-                          <Button
-                            color="primary"
-                            size="sm"
-                            className="px-2 py-1 p-0 me-2"
-                            onClick={() =>
-                              !isCampaignLinked(row.id) && handleEdit(row)
-                            }
-                            disabled={isCampaignLinked(row.id)}
-                            style={{
-                              opacity: isCampaignLinked(row.id) ? 0.5 : 1,
-                              cursor: isCampaignLinked(row.id)
-                                ? "not-allowed"
-                                : "pointer",
-                            }}
-                            title={
-                              isCampaignLinked(row.id)
-                                ? "Cannot edit: Campaign is linked to an order"
-                                : "Edit campaign"
-                            }
-                          >
-                            <FiEdit2 size={14} />
-                          </Button>
-                          <Button
-                            color="danger"
-                            size="sm"
-                            className="px-2 py-1"
-                            onClick={() => handleDelete(row.id)}
-                          >
-                            <FaTrash size={14} />
-                          </Button>
+                    {campaigns.length > 0 ? (
+                      campaigns.map((row) => (
+                        <tr key={row.id}>
+                          <td style={{ fontSize: "13px" }}>
+                            <button
+                              onClick={() => {
+                                sessionStorage.setItem(
+                                  "fromCampaignLink",
+                                  "true"
+                                );
+                                navigate(`/order-index?campaign=${row.id}`);
+                              }}
+                              style={{
+                                color: "blue",
+                                cursor: "pointer",
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                                font: "inherit",
+                              }}
+                            >
+                              {row.campaignName}
+                            </button>
+                          </td>
+                          <td style={{ fontSize: "12px" }}>
+                            {formatColumns(row.parsedFields || [])}
+                          </td>
+                          <td>
+                            <Button
+                              color="primary"
+                              size="sm"
+                              className="px-2 py-1 p-0 me-2"
+                              onClick={() =>
+                                !isCampaignLinked(row.id) && handleEdit(row)
+                              }
+                              disabled={isCampaignLinked(row.id)}
+                              style={{
+                                opacity: isCampaignLinked(row.id) ? 0.5 : 1,
+                                cursor: isCampaignLinked(row.id)
+                                  ? "not-allowed"
+                                  : "pointer",
+                              }}
+                              title={
+                                isCampaignLinked(row.id)
+                                  ? "Cannot edit: Campaign is linked to an order"
+                                  : "Edit campaign"
+                              }
+                            >
+                              <FiEdit2 size={14} />
+                            </Button>
+                            <Button
+                              color="danger"
+                              size="sm"
+                              className="px-2 py-1"
+                              onClick={() => handleDelete(row.id)}
+                              disabled={deletingId === row.id}
+                            >
+                              {deletingId === row.id ? (
+                                <Spinner size="sm" />
+                              ) : (
+                                <FaTrash size={14} />
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="text-center">
+                          {loading ? "Loading..." : "No campaigns found"}
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -448,7 +448,11 @@ const EmailNotification = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const rolesResponse = await getAllRoles();
+        const rolesResponse = await getAllRoles({
+          page: 1,
+          limit: 100,
+          search: "",
+        });
         const rolesData = Array.isArray(rolesResponse.data)
           ? rolesResponse.data
           : [];

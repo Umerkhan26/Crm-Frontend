@@ -31,7 +31,7 @@ export const createCampaign = async (campaignData) => {
   }
 };
 
-export const fetchCampaigns = async ({ page = 1, limit = 10 }) => {
+export const fetchCampaigns = async ({ page = 1, limit = 10, search = "" }) => {
   const token = localStorage.getItem("token");
 
   if (!token) {
@@ -39,15 +39,17 @@ export const fetchCampaigns = async ({ page = 1, limit = 10 }) => {
   }
 
   try {
-    const response = await fetch(
-      `${API_URL}/getAllCampaigns?page=${page}&limit=${limit}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const query = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      search,
+    }).toString();
+    const response = await fetch(`${API_URL}/getAllCampaigns?${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -65,9 +67,9 @@ export const fetchCampaigns = async ({ page = 1, limit = 10 }) => {
         campaignName: campaign.campaignName,
         parsedFields: campaign.fields ? JSON.parse(campaign.fields) : [],
       })),
-      totalItems: data.totalItems,
-      totalPages: data.totalPages,
-      currentPage: data.currentPage,
+      totalItems: data.totalItems || 0,
+      totalPages: data.totalPages || 1,
+      currentPage: data.currentPage || 1,
     };
   } catch (error) {
     console.error("Error fetching campaigns:", error);

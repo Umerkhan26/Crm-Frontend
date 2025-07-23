@@ -55,47 +55,12 @@ export const updateRolePermissions = async (roleId, permissions) => {
   return response.json();
 };
 
-// export const getAllRoles = async (params = { page: 1, limit: 10 }) => {
-//   const { page = 1, limit = 10 } = params;
-//   const token = localStorage.getItem("token");
-
-//   try {
-//     const response = await fetch(
-//       `${API_URL}/allroles?page=${page}&limit=${limit}`,
-//       {
-//         method: "GET",
-//         headers: {
-//           "Content-Type": "application/json",
-//           ...(token && { Authorization: `Bearer ${token}` }),
-//         },
-//       }
-//     );
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       if (response.status === 403) {
-//         throw new Error("You do not have permission to access roles.");
-//       }
-//       if (response.status === 401) {
-//         throw new Error("Session expired. Please log in again.");
-//       }
-//       throw new Error(
-//         errorData.message || `Failed to fetch roles: ${response.statusText}`
-//       );
-//     }
-
-//     return response.json();
-//   } catch (error) {
-//     console.error("getAllRoles error:", error);
-//     throw error; // Re-throw to be handled by the caller
-//   }
-// };
-
-export const getAllRoles = async (params = {}) => {
+export const getAllRoles = async ({ page = 1, limit = 10, search = "" }) => {
   const token = localStorage.getItem("token");
+  const query = new URLSearchParams({ page, limit, search }).toString();
 
   try {
-    const response = await fetch(`${API_URL}/all`, {
+    const response = await fetch(`${API_URL}/all?${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -105,21 +70,13 @@ export const getAllRoles = async (params = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      if (response.status === 403) {
-        throw new Error("You do not have permission to access roles.");
-      }
-      if (response.status === 401) {
-        throw new Error("Session expired. Please log in again.");
-      }
-      throw new Error(
-        errorData.message || `Failed to fetch roles: ${response.statusText}`
-      );
+      throw new Error(errorData.message || "Failed to fetch roles");
     }
 
     return response.json();
   } catch (error) {
     console.error("getAllRoles error:", error);
-    throw error; // Re-throw to be handled by the caller
+    throw error;
   }
 };
 

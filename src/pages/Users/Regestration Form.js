@@ -54,7 +54,7 @@ const RegisterUser = () => {
     const loadRoles = async () => {
       setLoading(true);
       try {
-        const response = await getAllRoles();
+        const response = await getAllRoles({ page: 1, limit: 100, search: "" });
         console.log("ALL ROLES", response);
         const roles = Array.isArray(response.data) ? response.data : [];
         const options = roles.map((role) => ({

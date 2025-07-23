@@ -63,7 +63,13 @@ const componentPermissions = {
     allLeads: false,
     masterLeads: false,
     acceptReject: false,
+    viewByCampaign: false,
+    assignUser: false,
+    viewAssignedUsers: false,
+    viewAssignmentStats: false,
+    viewUnassignedUsers: false,
   },
+
   ClientLead: {
     view: false,
     create: false,
@@ -140,6 +146,10 @@ const permissionMap = {
   "Leads.edit": "lead:update",
   "Leads.delete": "lead:delete",
   "Leads.viewByCampaign": "lead:getByCampaign",
+  "Leads.assignUser": "lead:assign",
+  "Leads.viewAssignedUsers": "lead:view_assigned_users",
+  "Leads.viewAssignmentStats": "lead:view_assignment_stats",
+  "Leads.viewUnassignedUsers": "lead:view_unassigned_users",
 
   // ClientLead
   "ClientLead.view": "clientLead:getAll",

@@ -37,19 +37,21 @@ export const updateUserById = async (id, payload, token) => {
   return result;
 };
 
-export const getAllUsers = async ({ page = 1, limit = 10 }) => {
+export const getAllUsers = async ({ page = 1, limit = 10, search = "" }) => {
   try {
     const token = localStorage.getItem("token");
+    const query = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      search,
+    }).toString();
 
-    const response = await fetch(
-      `${API_URL}/getAllUsers?page=${page}&limit=${limit}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch(`${API_URL}/getAllUsers?${query}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     const data = await response.json();
 

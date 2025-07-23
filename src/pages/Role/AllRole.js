@@ -1,97 +1,118 @@
-import { Badge, Button, Card, CardBody, Container } from "reactstrap";
+import { Badge, Button, Card, CardBody, Container, Spinner } from "reactstrap";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 import TableContainer from "../../components/Common/TableContainer";
 import { FaTrash } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { deleteRole, getAllRoles } from "../../services/roleService";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import { debounce } from "lodash";
 
 const AllRole = () => {
-  const [roles, setRoles] = useState([]);
+  // State management
+  const [allRoles, setAllRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [deletingId, setDeletingId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const { confirmDelete } = useDeleteConfirmation();
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 1,
+  });
 
+  const { confirmDelete } = useDeleteConfirmation();
+  const searchInputRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        setLoading(true);
-        const response = await getAllRoles({
-          page: currentPage,
-          limit: pageSize,
-        });
+  const fetchRoles = async (currentPage, pageSize, searchText) => {
+    try {
+      setLoading(true);
+      setSearchLoading(true);
+      const response = await getAllRoles({
+        page: currentPage,
+        limit: pageSize,
+        search: searchText,
+      });
 
-        console.log("API Response:", response);
-
-        if (!response.success) {
-          throw new Error(response.message || "Failed to fetch roles");
-        }
-
-        console.log("API Response:", response);
-        setRoles(response.data);
-        setTotalItems(response.totalItems);
-        setTotalPages(response.totalPages);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.success) {
+        throw new Error(response.message || "Failed to fetch roles");
       }
-    };
 
-    fetchRoles();
-  }, [currentPage, pageSize]);
+      setAllRoles(response.data || []);
+      setPagination((prev) => ({
+        ...prev,
+        totalItems: response.totalItems,
+        totalPages: response.totalPages,
+        currentPage: response.currentPage,
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setSearchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const debouncedFetch = debounce(fetchRoles, 500);
+    debouncedFetch(pagination.currentPage, pagination.pageSize, searchText);
+    return () => debouncedFetch.cancel();
+  }, [pagination.currentPage, pagination.pageSize, searchText]);
+
+  const handleSearchInput = (e) => {
+    setSearchText(e.target.value);
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
 
   const handleEdit = (role) => {
     navigate("/create-role", { state: { role } });
   };
 
   const handleDelete = (id) => {
+    setDeletingId(id);
     confirmDelete(
       async () => {
-        const response = await deleteRole(id);
-        if (!response.success)
-          throw new Error(response.message || "Failed to delete role.");
+        try {
+          const response = await deleteRole(id);
+          if (!response.success) {
+            throw new Error(response.message || "Failed to delete role.");
+          }
+          return true;
+        } catch (error) {
+          console.error("Delete error:", error);
+          return false;
+        } finally {
+          setDeletingId(null);
+        }
       },
       () => {
-        setRoles((prevRoles) => prevRoles.filter((role) => role.id !== id));
-        // Adjust totalItems and totalPages after deletion
-        setTotalItems((prev) => prev - 1);
-        setTotalPages(Math.ceil((totalItems - 1) / pageSize));
+        fetchRoles(pagination.currentPage, pagination.pageSize, searchText);
       },
       "role"
     );
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
   };
-
-  const handlePageSizeChange = (e) => {
-    setPageSize(parseInt(e.target.value));
-    setCurrentPage(1);
+  const handlePageSizeChange = (newSize) => {
+    setPagination((prev) => ({
+      ...prev,
+      pageSize: newSize,
+      currentPage: 1,
+    }));
   };
-
-  const breadcrumbItems = [
-    { title: "Dashboard", link: "/" },
-    { title: "Role", link: "#" },
-    { title: "All Roles", link: "#" },
-  ];
 
   const columns = useMemo(
     () => [
       {
         Header: "ID",
-        accessor: (_row, i) => (currentPage - 1) * pageSize + i + 1,
+        accessor: (_row, i) =>
+          (pagination.currentPage - 1) * pagination.pageSize + i + 1,
         disableFilters: true,
       },
       {
@@ -181,41 +202,90 @@ const AllRole = () => {
         ),
       },
     ],
-    [currentPage, pageSize, deletingId]
+    [pagination.currentPage, pagination.pageSize, deletingId]
   );
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const breadcrumbItems = [
+    { title: "Dashboard", link: "/" },
+    { title: "Role", link: "#" },
+    { title: "All Roles", link: "#" },
+  ];
+
+  if (error) {
+    return (
+      <div className="page-content">
+        <Container fluid>
+          <Breadcrumbs title="All ROLES" breadcrumbItems={breadcrumbItems} />
+          <Card>
+            <CardBody>
+              <div className="alert alert-danger">Error: {error}</div>
+            </CardBody>
+          </Card>
+        </Container>
+      </div>
+    );
+  }
 
   return (
-    <div className="page-content">
+    <div className="page-content" style={{ position: "relative" }}>
       <Container fluid>
         <Breadcrumbs title="All ROLES" breadcrumbItems={breadcrumbItems} />
         <Card>
-          <CardBody>
-            <div className="d-flex justify-content-end align-items-center mb-3">
-              <div>
+          <CardBody style={{ overflowX: "auto", position: "relative" }}>
+            {loading && (
+              <div
+                className="d-flex justify-content-center align-items-center"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
+                  zIndex: 10,
+                }}
+              >
+                <Spinner color="primary" />
+              </div>
+            )}
+            <div
+              className="d-flex justify-content-between align-items-center mb-3"
+              style={{ opacity: loading ? 0.6 : 1 }}
+            >
+              <h4 className="card-title mb-0">Role Management</h4>
+              <div className="w-25 position-relative">
                 <input
+                  ref={searchInputRef}
                   type="text"
                   className="form-control"
-                  placeholder="Search..."
+                  placeholder="Search roles..."
+                  onChange={handleSearchInput}
                   value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
                 />
+                {searchLoading && (
+                  <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                    <div
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                    >
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+
             <TableContainer
-              columns={columns}
-              data={roles}
+              columns={columns || []}
+              data={allRoles || []}
               isPagination={true}
-              isCustomPageSize={true}
+              iscustomPageSize={false}
               isBordered={false}
-              customPageSize={pageSize}
-              totalPages={totalPages}
-              currentPage={currentPage}
+              customPageSize={pagination.pageSize}
+              pagination={pagination}
               onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
               className="custom-table"
-              totalItems={totalItems}
             />
           </CardBody>
         </Card>
