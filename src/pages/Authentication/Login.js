@@ -5,6 +5,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { API_URL } from "../../services/auth";
+import { loginUserSuccessful } from "../../store/actions";
+import { useDispatch } from "react-redux";
 
 function Login() {
   const {
@@ -15,6 +17,8 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const dispatch = useDispatch();
 
   React.useEffect(() => {
     document.body.classList.add("auth-body-bg");
@@ -36,43 +40,53 @@ function Login() {
           password: values.password,
         }),
       });
-      console.log("LOGIN IN RESPONSE", response);
 
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
 
-      console.log("USER LOGGED IN", data);
+      // Handle null role case
+      const userData = {
+        ...data.user,
+        role: data.user.role || {
+          id: 0,
+          name: "admin",
+          Permissions: [
+            // Default admin permissions
+            { name: "user:create" },
+            { name: "user:get" },
+            { name: "user:update" },
+            { name: "user:delete" },
+            { name: "user:updateStatus" },
+            // Add all other admin permissions here
+          ],
+        },
+      };
 
-      // Save token and user to localStorage
+      // Dispatch login success action
+      dispatch(
+        loginUserSuccessful({
+          user: userData,
+          token: data.token,
+        })
+      );
+
+      // Save to localStorage
       localStorage.setItem("token", data.token);
-      localStorage.setItem("authUser", JSON.stringify(data.user));
-      localStorage.setItem("userId", data.user.id); // Explicitly save userId
+      localStorage.setItem("authUser", JSON.stringify(userData));
+      localStorage.setItem("userId", userData.id);
+      localStorage.setItem(
+        "permissions",
+        JSON.stringify(userData.role.Permissions)
+      );
 
-      // Show success toast
-      toast.success("Login successful!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
+      toast.success("Login successful!");
+      navigate(location.state?.from?.pathname || "/dashboard", {
+        replace: true,
       });
-
-      // Navigate to dashboard
-      const from = location.state?.from?.pathname || "/dashboard";
-      navigate(from, { replace: true });
     } catch (error) {
-      // Show error toast
-      toast.error(error.message, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }

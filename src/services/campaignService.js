@@ -104,22 +104,34 @@ export const getCampaignById = async (campaignId) => {
 };
 
 export const updateCampaign = async (id, data) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+  console.log(
+    "Sending payload for campaign ID:",
+    id,
+    JSON.stringify(data, null, 2)
+  );
   try {
     const response = await fetch(`${API_URL}/updateCampaignById/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to update campaign");
+      const errorData = await response.json();
+      console.error("API Error:", errorData);
+      throw new Error(errorData.message || "Failed to update campaign");
     }
 
     return await response.json();
   } catch (error) {
+    console.error("Update campaign error:", error.message);
     throw error;
   }
 };

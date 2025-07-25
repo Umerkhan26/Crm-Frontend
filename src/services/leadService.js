@@ -295,3 +295,25 @@ export const fetchUnassignedLeads = async () => {
     throw error;
   }
 };
+
+export const getAssignmentStats = async (leadId) => {
+  try {
+    const response = await fetch(`${API_URL}/assignment-stats`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch assignment stats");
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching assignment stats:", error);
+    throw error;
+  }
+};

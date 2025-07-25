@@ -304,9 +304,10 @@ const CreateCampaign = () => {
         toast.success("Campaign updated successfully!");
         navigate("/campaign-index");
       } else {
-        await createCampaign(payload);
+        const response = await createCampaign(payload);
         toast.success("Campaign created successfully!");
         navigate("/campaign-index");
+        console.log("crated campaign", response);
       }
 
       if (!editData) {
