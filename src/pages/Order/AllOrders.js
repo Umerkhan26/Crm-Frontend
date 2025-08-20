@@ -1,4 +1,4 @@
-// import React, { useEffect, useMemo, useState } from "react";
+// import React, { useEffect, useMemo, useState, useRef } from "react";
 // import TableContainer from "../../components/Common/TableContainer";
 // import Breadcrumbs from "../../components/Common/Breadcrumb";
 // import {
@@ -14,6 +14,8 @@
 //   Col,
 //   Badge,
 //   ButtonGroup,
+//   Input,
+//   Spinner,
 // } from "reactstrap";
 // import {
 //   FaFilter,
@@ -44,6 +46,7 @@
 // import { toast } from "react-toastify";
 // import Swal from "sweetalert2";
 // import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+// import { debounce } from "lodash";
 
 // const Allorders = () => {
 //   const navigate = useNavigate();
@@ -63,6 +66,7 @@
 //   const [ordersData, setOrdersData] = useState([]);
 //   const [campaignOptions, setCampaignOptions] = useState([]);
 //   const [loading, setLoading] = useState(true);
+//   const [searchLoading, setSearchLoading] = useState(false);
 //   const [selectedOrder, setSelectedOrder] = useState(null);
 //   const [searchText, setSearchText] = useState("");
 //   const [pagination, setPagination] = useState({
@@ -71,6 +75,7 @@
 //     totalItems: 0,
 //     pageSize: 10,
 //   });
+//   const searchInputRef = useRef(null);
 
 //   const toggleModal = (order = null) => {
 //     setSelectedOrder(order);
@@ -79,7 +84,7 @@
 //   const toggleImportModal = () => setImportModalOpen(!importModalOpen);
 //   const toggleMappingModal = () => setMappingModalOpen(!mappingModalOpen);
 //   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
-//   const toggleCampaignDropdown = () => setCampaignDropdownOpen((prev) => !prev); // Toggle for campaign dropdown
+//   const toggleCampaignDropdown = () => setCampaignDropdownOpen((prev) => !prev);
 
 //   // Fetch campaigns
 //   useEffect(() => {
@@ -107,29 +112,42 @@
 //     }
 //   }, [location.search, campaignOptions]);
 
+//   // Debounced fetch function for orders
+//   const debouncedFetchOrders = debounce(async (page, limit, search) => {
+//     try {
+//       setLoading(true);
+//       setSearchLoading(true);
+
+//       const response = await fetchAllOrders(page, limit, search);
+//       setOrdersData(response.data);
+//       setPagination((prev) => ({
+//         ...prev,
+//         totalPages: response.totalPages,
+//         totalItems: response.totalItems,
+//         currentPage: response.currentPage,
+//       }));
+//     } catch (error) {
+//       console.error("Failed to load orders", error);
+//       toast.error("Failed to load orders");
+//     } finally {
+//       setLoading(false);
+//       setSearchLoading(false);
+//     }
+//   }, 500);
+
 //   useEffect(() => {
-//     const loadOrders = async () => {
-//       try {
-//         const response = await fetchAllOrders(
-//           pagination.currentPage,
-//           pagination.pageSize
-//         );
-//         console.log("all order", response);
-//         setOrdersData(response.data);
-//         setPagination((prev) => ({
-//           ...prev,
-//           totalPages: response.totalPages,
-//           totalItems: response.totalItems,
-//         }));
-//       } catch (error) {
-//         console.error("Failed to load orders", error);
-//         toast.error("Failed to load orders");
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     loadOrders();
-//   }, [pagination.currentPage, pagination.pageSize]);
+//     debouncedFetchOrders(
+//       pagination.currentPage,
+//       pagination.pageSize,
+//       searchText
+//     );
+//     return () => debouncedFetchOrders.cancel();
+//   }, [pagination.currentPage, pagination.pageSize, searchText]);
+
+//   const handleSearchInput = (e) => {
+//     setSearchText(e.target.value);
+//     setPagination((prev) => ({ ...prev, currentPage: 1 }));
+//   };
 
 //   const handleFileUpload = (file, data) => {
 //     const workbook = XLSX.read(data, { type: "binary" });
@@ -219,17 +237,11 @@
 //           toast.success(
 //             `Order ${isBlocked ? "unblocked" : "blocked"} successfully`
 //           );
-//           const response = await fetchAllOrders(
+//           await debouncedFetchOrders(
 //             pagination.currentPage,
-//             pagination.pageSize
+//             pagination.pageSize,
+//             searchText
 //           );
-//           setOrdersData(Array.isArray(response.data) ? response.data : []);
-//           setPagination((prev) => ({
-//             ...prev,
-//             totalPages: response.totalPages || 1,
-//             totalItems: response.totalItems || 0,
-//             currentPage: response.currentPage || 1,
-//           }));
 //         } catch (error) {
 //           toast.error(
 //             error.message ||
@@ -246,17 +258,11 @@
 //         await deleteOrder(orderId);
 //       },
 //       async () => {
-//         const response = await fetchAllOrders(
+//         await debouncedFetchOrders(
 //           pagination.currentPage,
-//           pagination.pageSize
+//           pagination.pageSize,
+//           searchText
 //         );
-//         setOrdersData(Array.isArray(response.data) ? response.data : []);
-//         setPagination((prev) => ({
-//           ...prev,
-//           totalPages: response.totalPages || 1,
-//           totalItems: response.totalItems || 0,
-//           currentPage: response.currentPage || 1,
-//         }));
 //       },
 //       "order"
 //     );
@@ -343,18 +349,6 @@
 //           </div>
 //         ),
 //       },
-//       // {
-//       //   Header: "Campaign",
-//       //   accessor: "campaign_id",
-//       //   disableFilters: true,
-//       //   width: 100,
-//       //   Cell: ({ row }) => {
-//       //     const campaign = campaignOptions.find(
-//       //       (c) => c.value === row.original.campaign_id
-//       //     );
-//       //     return <div>{campaign ? campaign.label : "N/A"}</div>;
-//       //   },
-//       // },
 //       {
 //         Header: "Options",
 //         disableFilters: true,
@@ -636,27 +630,41 @@
 //                 </Col>
 
 //                 <Col md={3}>
-//                   <input
-//                     type="text"
-//                     className="form-control"
-//                     placeholder="Search order..."
-//                     value={searchText}
-//                     onChange={(e) => setSearchText(e.target.value)}
-//                   />
+//                   <div className="position-relative">
+//                     <Input
+//                       innerRef={searchInputRef}
+//                       type="text"
+//                       className="form-control"
+//                       placeholder="Search order..."
+//                       value={searchText}
+//                       onChange={handleSearchInput}
+//                     />
+//                     {searchLoading && (
+//                       <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+//                         <Spinner size="sm" />
+//                       </div>
+//                     )}
+//                   </div>
 //                 </Col>
 //               </Row>
-//               <TableContainer
-//                 columns={columns || []}
-//                 data={filteredOrders || []}
-//                 isPagination={true}
-//                 iscustomPageSize={false}
-//                 isBordered={false}
-//                 customPageSize={pagination.pageSize}
-//                 className="custom-table"
-//                 pagination={pagination}
-//                 onPageChange={handlePageChange}
-//                 onPageSizeChange={handlePageSizeChange}
-//               />
+//               {loading ? (
+//                 <div className="text-center py-5">
+//                   <Spinner color="primary" />
+//                 </div>
+//               ) : (
+//                 <TableContainer
+//                   columns={columns || []}
+//                   data={filteredOrders || []}
+//                   isPagination={true}
+//                   iscustomPageSize={false}
+//                   isBordered={false}
+//                   customPageSize={pagination.pageSize}
+//                   className="custom-table"
+//                   pagination={pagination}
+//                   onPageChange={handlePageChange}
+//                   onPageSizeChange={handlePageSizeChange}
+//                 />
+//               )}
 //             </CardBody>
 //           </Card>
 //         </Container>
@@ -736,6 +744,8 @@ import {
   fetchAllOrders,
   setOrderBlockStatus,
   fetchCampaigns,
+  fetchOrdersByVendorId, // New import
+  fetchOrdersByClientId, // New import
 } from "../../services/orderService";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -770,6 +780,11 @@ const Allorders = () => {
     pageSize: 10,
   });
   const searchInputRef = useRef(null);
+
+  // Get user role and ID from localStorage (assuming stored after login)
+  const user = JSON.parse(localStorage.getItem("authUser")) || {};
+  const userRole = user.userrole || "admin"; // Default to admin if not found
+  const userId = user.id;
 
   const toggleModal = (order = null) => {
     setSelectedOrder(order);
@@ -806,13 +821,24 @@ const Allorders = () => {
     }
   }, [location.search, campaignOptions]);
 
-  // Debounced fetch function for orders
+  // Debounced fetch function for orders, now dynamic based on user role
   const debouncedFetchOrders = debounce(async (page, limit, search) => {
     try {
       setLoading(true);
       setSearchLoading(true);
 
-      const response = await fetchAllOrders(page, limit, search);
+      let fetchFunction;
+      if (userRole === "admin") {
+        fetchFunction = fetchAllOrders;
+      } else if (userRole === "vendor") {
+        fetchFunction = (p, l, s) => fetchOrdersByVendorId(userId, p, l, s);
+      } else if (userRole === "client") {
+        fetchFunction = (p, l, s) => fetchOrdersByClientId(userId, p, l, s);
+      } else {
+        throw new Error("Unknown user role");
+      }
+
+      const response = await fetchFunction(page, limit, search);
       setOrdersData(response.data);
       setPagination((prev) => ({
         ...prev,
@@ -836,7 +862,13 @@ const Allorders = () => {
       searchText
     );
     return () => debouncedFetchOrders.cancel();
-  }, [pagination.currentPage, pagination.pageSize, searchText]);
+  }, [
+    pagination.currentPage,
+    pagination.pageSize,
+    searchText,
+    userRole,
+    userId,
+  ]);
 
   const handleSearchInput = (e) => {
     setSearchText(e.target.value);
@@ -1043,6 +1075,7 @@ const Allorders = () => {
           </div>
         ),
       },
+
       {
         Header: "Options",
         disableFilters: true,
@@ -1104,6 +1137,7 @@ const Allorders = () => {
         disableFilters: true,
         width: 60,
       },
+
       {
         Header: "Status",
         accessor: "is_blocked",

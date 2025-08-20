@@ -265,81 +265,81 @@ const ClientLeads = () => {
           </div>
         ),
       },
-      {
-        Header: "Status",
-        accessor: "status",
-        disableFilters: true,
-        width: 100,
-        Cell: ({ value }) => (
-          <Badge
-            color={
-              value === "accepted"
-                ? "success"
-                : value === "rejected"
-                ? "danger"
-                : "secondary"
-            }
-            className="text-capitalize"
-          >
-            {value}
-          </Badge>
-        ),
-      },
-      {
-        Header: "Options",
-        disableFilters: true,
-        Cell: ({ row }) => {
-          const [isUpdating, setIsUpdating] = useState(false);
-          const lead = row.original;
+      // {
+      //   Header: "Status",
+      //   accessor: "status",
+      //   disableFilters: true,
+      //   width: 100,
+      //   Cell: ({ value }) => (
+      //     <Badge
+      //       color={
+      //         value === "accepted"
+      //           ? "success"
+      //           : value === "rejected"
+      //           ? "danger"
+      //           : "secondary"
+      //       }
+      //       className="text-capitalize"
+      //     >
+      //       {value}
+      //     </Badge>
+      //   ),
+      // },
+      // {
+      //   Header: "Options",
+      //   disableFilters: true,
+      //   Cell: ({ row }) => {
+      //     const [isUpdating, setIsUpdating] = useState(false);
+      //     const lead = row.original;
 
-          const handleStatusClick = async (newStatus) => {
-            setIsUpdating(true);
-            try {
-              await handleStatusUpdate(lead.id, newStatus);
-            } catch (error) {
-              // Error is already handled in handleStatusUpdate
-            } finally {
-              setIsUpdating(false);
-            }
-          };
+      //     const handleStatusClick = async (newStatus) => {
+      //       setIsUpdating(true);
+      //       try {
+      //         await handleStatusUpdate(lead.id, newStatus);
+      //       } catch (error) {
+      //         // Error is already handled in handleStatusUpdate
+      //       } finally {
+      //         setIsUpdating(false);
+      //       }
+      //     };
 
-          return (
-            <div className="d-flex gap-2">
-              <Button
-                color="success"
-                size="sm"
-                className="px-3"
-                disabled={isUpdating || lead.status === "accepted"}
-                onClick={() => handleStatusClick("accepted")}
-              >
-                {isUpdating && lead.status === "pending" ? (
-                  <Spinner size="sm" />
-                ) : lead.status === "accepted" ? (
-                  "Accept"
-                ) : (
-                  "Accept"
-                )}
-              </Button>
-              <Button
-                color="danger"
-                size="sm"
-                className="px-3"
-                disabled={isUpdating || lead.status === "rejected"}
-                onClick={() => handleStatusClick("rejected")}
-              >
-                {isUpdating && lead.status === "pending" ? (
-                  <Spinner size="sm" />
-                ) : lead.status === "rejected" ? (
-                  "Reject"
-                ) : (
-                  "Reject"
-                )}
-              </Button>
-            </div>
-          );
-        },
-        width: 150,
-      },
+      //     return (
+      //       <div className="d-flex gap-2">
+      //         <Button
+      //           color="success"
+      //           size="sm"
+      //           className="px-3"
+      //           disabled={isUpdating || lead.status === "accepted"}
+      //           onClick={() => handleStatusClick("accepted")}
+      //         >
+      //           {isUpdating && lead.status === "pending" ? (
+      //             <Spinner size="sm" />
+      //           ) : lead.status === "accepted" ? (
+      //             "Accept"
+      //           ) : (
+      //             "Accept"
+      //           )}
+      //         </Button>
+      //         <Button
+      //           color="danger"
+      //           size="sm"
+      //           className="px-3"
+      //           disabled={isUpdating || lead.status === "rejected"}
+      //           onClick={() => handleStatusClick("rejected")}
+      //         >
+      //           {isUpdating && lead.status === "pending" ? (
+      //             <Spinner size="sm" />
+      //           ) : lead.status === "rejected" ? (
+      //             "Reject"
+      //           ) : (
+      //             "Reject"
+      //           )}
+      //         </Button>
+      //       </div>
+      //     );
+      //   },
+      //   width: 150,
+      // },
       {
         Header: "Action",
         disableFilters: true,

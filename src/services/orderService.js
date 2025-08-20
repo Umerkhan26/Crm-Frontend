@@ -219,3 +219,86 @@ export const importClientLeads = async (file, orderId, mappedData) => {
     throw new Error(error.message || "Something went wrong during import");
   }
 };
+
+export const fetchVendorsAndClients = async (search = "") => {
+  try {
+    const response = await fetch(
+      `${API_URL}/get-vendors-clients?search=${search}&limit=100`
+    );
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching vendors and clients:", error);
+    throw error;
+  }
+};
+
+// ... existing imports and functions ...
+
+export const fetchOrdersByVendorId = async (
+  vendorId,
+  page = 1,
+  limit = 10,
+  search = ""
+) => {
+  try {
+    const token = getAuthToken();
+    const response = await fetch(
+      `${API_URL}/getOrderByVendorId/${vendorId}?page=${page}&limit=${limit}&search=${encodeURIComponent(
+        search
+      )}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch vendor orders");
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("Error fetching vendor orders:", error.message);
+    throw error;
+  }
+};
+
+export const fetchOrdersByClientId = async (
+  clientId,
+  page = 1,
+  limit = 10,
+  search = ""
+) => {
+  try {
+    const token = getAuthToken();
+    const response = await fetch(
+      `${API_URL}/getOrderByClientId/${clientId}?page=${page}&limit=${limit}&search=${encodeURIComponent(
+        search
+      )}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch client orders");
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("Error fetching client orders:", error.message);
+    throw error;
+  }
+};

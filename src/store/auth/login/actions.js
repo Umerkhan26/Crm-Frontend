@@ -111,6 +111,8 @@ import {
   API_ERROR,
   LOGOUT_USER,
   LOGOUT_USER_SUCCESS,
+  REFRESH_PERMISSIONS,
+  UPDATE_PERMISSIONS,
 } from "./actionTypes";
 
 export const checkLogin = (user, history) => ({
@@ -126,6 +128,15 @@ export const loginUserSuccessful = (payload) => ({
     role: payload.user.role,
     permissions: payload.permissions,
   },
+});
+
+export const refreshPermissions = (permissions) => ({
+  type: REFRESH_PERMISSIONS,
+  payload: { permissions },
+});
+export const updatePermissions = (permissions) => ({
+  type: UPDATE_PERMISSIONS,
+  payload: permissions,
 });
 
 export const apiError = (error) => ({

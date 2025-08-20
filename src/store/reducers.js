@@ -16,6 +16,7 @@ import chat from "./chat/reducer";
 
 //ecommerce
 import Ecommerce from "./e-commerce/reducer";
+import { setPermissions } from "./Permission/permissionsSlice";
 
 const rootReducer = combineReducers({
   // public
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
   Calendar,
   Ecommerce,
   chat,
+  setPermissions,
 });
 
 export default rootReducer;

@@ -12,30 +12,61 @@
 // };
 
 // export default AppRoute;
-// src/routes/route.js
-import { Navigate, useLocation } from "react-router-dom";
+
+// const AppRoute = ({ children, requiredPermissions = [] }) => {
+//   const user = useSelector((state) => state.Login.user);
+
+//   if (requiredPermissions.length > 0) {
+//     const hasAccess = hasAnyPermission(user, requiredPermissions);
+//     if (!hasAccess) {
+//       return <Navigate to="/dashboard" replace />;
+//     }
+//   }
+
+//   return children;
+// };
+
+// export default AppRoute;
+
+import React from "react";
 import { useSelector } from "react-redux";
-import { hasPermission } from "../utils/permissions";
+import { Navigate } from "react-router-dom";
+import { hasAnyPermission, isAdmin } from "../utils/permissions";
 
-const AppRoute = ({ children, requiredPermissions = [] }) => {
-  const location = useLocation();
-  const isAuthenticated = !!localStorage.getItem("authUser");
-  const permissions = useSelector((state) => state.Login.permissions);
-  const user = useSelector((state) => state.Login.user);
+const AppRoute = ({
+  children,
+  requiredPermissions = [],
+  isAuthProtected = true,
+}) => {
+  const user = useSelector((state) => state.Login?.user);
+  const isUserAdmin = isAdmin(user);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // If route doesn't require authentication
+  if (!isAuthProtected) {
+    return children;
   }
 
-  // Check if user has required permissions
-  if (requiredPermissions.length > 0) {
-    const hasAccess = requiredPermissions.some((permission) =>
-      hasPermission(permissions, permission)
-    );
+  // If user is admin, bypass all permission checks
+  if (isUserAdmin) {
+    return children;
+  }
 
-    if (!hasAccess) {
-      return <Navigate to="/dashboard" state={{ from: location }} replace />;
-    }
+  // If no permissions are required, allow access
+  if (requiredPermissions.length === 0) {
+    return children;
+  }
+
+  // If user data isn't loaded yet, show loading or block render
+  if (!user || !user.role || !user.role.permissions) {
+    return <div>Loading...</div>; // Replace with spinner if needed
+  }
+
+  const hasAccess = hasAnyPermission(user, requiredPermissions);
+
+  if (!hasAccess) {
+    console.warn("Access denied. Missing permissions:", requiredPermissions);
+    console.log("User permissions:", user.role.permissions);
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

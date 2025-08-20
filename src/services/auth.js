@@ -90,28 +90,6 @@ export const getUserById = async (userId) => {
   }
 };
 
-// In services/auth.js
-export const updateUser = async (userId, userData) => {
-  try {
-    const response = await fetch(`${API_URL}/updateUserById/${userId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(userData),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to update user");
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const blockOrUnblockUser = async (userId, action) => {
   try {
     const response = await fetch(`${API_URL}/blockOrUnblockUser/${userId}`, {

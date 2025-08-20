@@ -530,6 +530,17 @@ import SystemSettingsForm from "../pages/Setting/SystemSettingsForm";
 import RegisterUser from "../pages/Users/Regestration Form";
 import AllRole from "../pages/Role/AllRole";
 import CreateRole from "../pages/Role/CreateRole";
+import Product from "../pages/Product/Product";
+import AssignedLeads from "../pages/AssignedLeads";
+import UserDetailsPage from "../pages/Users/UserDetailsPage";
+import NewProductSale from "../pages/Product/CreateProduct";
+import NewProduct from "../pages/Product/CreateProduct";
+import AllProducts from "../pages/Product/AllProducts";
+import Sale from "../pages/Product/Sales";
+import LeadDetailModal from "../components/Modals/LeadDetailModal";
+import LeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
+import AssignedLeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
+import SaleDetails from "../pages/Product/SaleDetailsPage";
 
 const authProtectedRoutes = [
   // Tables
@@ -538,7 +549,13 @@ const authProtectedRoutes = [
   {
     path: "/allUsers",
     component: <AllUsers />,
-    requiredPermissions: ["user:get"],
+    requiredPermissions: ["user:get", "user:getById"],
+  },
+
+  {
+    path: "/user-details/:userId",
+    component: <UserDetailsPage />,
+    requiredPermissions: ["user:getById"], // Add appropriate permissions
   },
   {
     path: "/user-register",
@@ -581,12 +598,52 @@ const authProtectedRoutes = [
   {
     path: "/lead-index",
     component: <ClientLeads />,
-    requiredPermissions: ["lead:getAll"],
+    requiredPermissions: ["clientLead:getAll"],
   },
   {
     path: "/master-lead-index",
     component: <MasterLead />,
     requiredPermissions: ["lead:getAll"],
+  },
+  {
+    path: "/user-details/:userId",
+    component: <UserDetailsPage />,
+    requiredPermissions: ["user:get"],
+    exact: true,
+  },
+  {
+    path: "/assigned-leads",
+    component: <AssignedLeads />,
+    requiredPermissions: ["lead:getByAssignee"],
+    exact: true,
+  },
+  {
+    path: "/leads/:leadId",
+    component: <AssignedLeadDetailPage />,
+    requiredPermissions: ["note:view"],
+    exact: true,
+  },
+
+  {
+    path: "/create-product",
+    component: <NewProduct />,
+    requiredPermissions: ["PRODUCT_CREATE"],
+  },
+  {
+    path: "/all-products",
+    component: <AllProducts />,
+    requiredPermissions: ["PRODUCT_GET_ALL"],
+  },
+
+  {
+    path: "/all-sales",
+    component: <Sale />,
+    requiredPermissions: ["PRODUCT_SALE_GET_ALL", "PRODUCT_SALE_GET_BY_ID"],
+  },
+  {
+    path: "/sale-details/:id",
+    component: <SaleDetails />,
+    requiredPermissions: ["PRODUCT_SALE_GET_ALL", "PRODUCT_SALE_GET_BY_ID"],
   },
   { path: "/all-referral", component: <MyReferrals /> },
   { path: "/allEmail", component: <EmailTemplate /> },
@@ -594,6 +651,7 @@ const authProtectedRoutes = [
   { path: "/all-notifications", component: <Notification /> },
   { path: "/all-activities", component: <ActivityLog /> },
   { path: "/settings", component: <SystemSettingsForm /> },
+
   {
     path: "/create-role",
     component: <CreateRole />,

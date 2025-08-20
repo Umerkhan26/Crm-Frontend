@@ -56,7 +56,6 @@ export const fetchCampaigns = async ({ page = 1, limit = 10, search = "" }) => {
     }
 
     const data = await response.json();
-    console.log("API response:", data);
 
     const groupedCampaigns = data.groupedCampaigns || {};
     const allCampaigns = Object.values(groupedCampaigns).flat();
@@ -84,7 +83,7 @@ export const getCampaignById = async (campaignId) => {
 
   try {
     const token = getAuthToken();
-    const response = await fetch(`${API_URL}/getCampaignById/${campaignId}`, {
+    const response = await fetch(`${API_URL}/getCampaignId/${campaignId}`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

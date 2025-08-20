@@ -12,6 +12,18 @@ export const getEmailTemplates = async () => {
   }
 };
 
+export const getEmailTemplatesById = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/email-templates/${id}`);
+    if (!response.ok) throw new Error("Failed to fetch email templates");
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching email templates:", error);
+    throw error;
+  }
+};
+
 export const updateEmailTemplate = async (id, data) => {
   const response = await fetch(`${API_URL}/email-templates/${id}`, {
     method: "PUT",

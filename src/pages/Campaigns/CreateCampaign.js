@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import { createCampaign, updateCampaign } from "../../services/campaignService";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import Swal from "sweetalert2";
+import { useSelector } from "react-redux";
 
 const ReadOnlyInput = styled(Input)`
   background-color: #f8f9fa;
@@ -74,6 +75,12 @@ const CreateCampaign = () => {
 
   const [campaignName, setCampaignName] = useState(editData?.name || "");
   const [isLoading, setIsLoading] = useState(false);
+
+  const user = useSelector((state) => {
+    if (state.auth?.user) return state.auth.user;
+    const storedUser = localStorage.getItem("authUser");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   // Define default columns that should not be editable
   const defaultColumns = [
@@ -271,6 +278,57 @@ const CreateCampaign = () => {
     { title: editData ? "Edit Campaign" : "Create Campaign", link: "#" },
   ];
 
+  // const handleSubmit = async () => {
+  //   if (!campaignName.trim()) {
+  //     toast.warn("Please enter a valid campaign name.");
+  //     return;
+  //   }
+
+  //   if (columns.length === 0) {
+  //     toast.warn("Please add at least one column.");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     campaignName,
+  //     fields: columns.map((col) => ({
+  //       col_name: col.name,
+  //       col_slug: col.slug,
+  //       col_type: col.type,
+  //       default_value: col.defaultValue,
+  //       options: ["dropdown", "radio", "checkbox"].includes(col.type)
+  //         ? col.options?.split("|").map((opt) => opt.trim())
+  //         : undefined,
+  //       multiple: col.type === "checkbox",
+  //     })),
+  //   };
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     if (editData) {
+  //       await updateCampaign(editData.id, payload);
+  //       toast.success("Campaign updated successfully!");
+  //       navigate("/campaign-index");
+  //     } else {
+  //       const response = await createCampaign(payload);
+  //       toast.success("Campaign created successfully!");
+  //       navigate("/campaign-index");
+  //       console.log("crated campaign", response);
+  //     }
+
+  //     if (!editData) {
+  //       setCampaignName("");
+  //       setColumns(defaultColumns);
+  //     }
+  //   } catch (error) {
+  //     toast.error(
+  //       `Error ${editData ? "updating" : "creating"} campaign: ${error.message}`
+  //     );
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
   const handleSubmit = async () => {
     if (!campaignName.trim()) {
       toast.warn("Please enter a valid campaign name.");
@@ -284,6 +342,7 @@ const CreateCampaign = () => {
 
     const payload = {
       campaignName,
+      createdBy: user.id, // Add createdBy field
       fields: columns.map((col) => ({
         col_name: col.name,
         col_slug: col.slug,
@@ -307,7 +366,7 @@ const CreateCampaign = () => {
         const response = await createCampaign(payload);
         toast.success("Campaign created successfully!");
         navigate("/campaign-index");
-        console.log("crated campaign", response);
+        console.log("created campaign", response);
       }
 
       if (!editData) {
@@ -322,7 +381,6 @@ const CreateCampaign = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <React.Fragment>
       <div className="page-content">

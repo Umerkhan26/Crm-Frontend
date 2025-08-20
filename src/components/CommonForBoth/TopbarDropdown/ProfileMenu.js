@@ -8,31 +8,21 @@ import {
 
 // i18n
 import { withTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 
 const ProfileMenu = ({ t }) => {
   const [menu, setMenu] = useState(false);
-  const [username, setUsername] = useState("Admin");
-  const [userImage, setUserImage] = useState(null);
 
-  useEffect(() => {
-    const authUserString = localStorage.getItem("authUser");
-    if (authUserString) {
-      const authUser = JSON.parse(authUserString);
+  const user = useSelector((state) => state.Login.user);
 
-      if (authUser.email) {
-        const uNm = authUser.email.split("@")[0];
-        const formatted = uNm.charAt(0).toUpperCase() + uNm.slice(1);
-        setUsername(formatted);
-      }
+  const username = user?.email
+    ? user.email.split("@")[0].charAt(0).toUpperCase() +
+      user.email.split("@")[0].slice(1)
+    : "Admin";
 
-      if (authUser.userImage) {
-        setUserImage(authUser.userImage);
-      }
-    }
-  }, []);
+  const userImage = user?.userImage || "/default-avatar.png";
 
   const toggle = () => setMenu((prev) => !prev);
-
   return (
     <React.Fragment>
       <Dropdown

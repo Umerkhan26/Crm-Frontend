@@ -38,21 +38,32 @@ export const createRole = async (payload) => {
 };
 
 export const updateRolePermissions = async (roleId, permissions) => {
-  const response = await fetch(`${API_URL}/update/${roleId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ permissions }),
-  });
+  try {
+    const token = localStorage.getItem("token");
+    console.log("Token:", token); // Debug line
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to update role permissions: ${response.statusText}`
-    );
+    const response = await fetch(`${API_URL}/updateRole/${roleId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ permissions }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Backend error details:", errorData); // Debug line
+      throw new Error(
+        `Failed to update role permissions: ${response.statusText}`
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Full error:", error); // Debug line
+    throw error;
   }
-
-  return response.json();
 };
 
 export const getAllRoles = async ({ page = 1, limit = 10, search = "" }) => {
@@ -81,9 +92,14 @@ export const getAllRoles = async ({ page = 1, limit = 10, search = "" }) => {
 };
 
 export const deleteRole = async (roleId) => {
+  const token = localStorage.getItem("token");
   try {
-    const response = await fetch(`${API_URL}/delete/${roleId}`, {
+    const response = await fetch(`${API_URL}/deleteRole/${roleId}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
     const data = await response.json();
