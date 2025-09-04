@@ -390,6 +390,7 @@ import { FaTrash } from "react-icons/fa";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { useSelector } from "react-redux";
 import { hasAnyPermission } from "../../utils/permissions";
+import { useDebounce } from "use-debounce";
 
 const AllCampaigns = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -408,10 +409,102 @@ const AllCampaigns = () => {
     const storedUser = localStorage.getItem("authUser");
     return storedUser ? JSON.parse(storedUser) : null;
   });
+  const [debouncedSearch] = useDebounce(searchText, 400);
 
   const reduxPermissions = useSelector(
     (state) => state.Permissions?.permissions
   );
+
+  // useEffect(() => {
+  //   const loadData = async () => {
+  //     setLoading(true);
+  //     try {
+  //       const campaignsData = await fetchCampaigns({
+  //         page: currentPage,
+  //         limit: entriesPerPage,
+  //         search: debouncedSearch,
+  //       });
+
+  //       let filteredCampaigns = [];
+
+  //       if (campaignsData.data?.length && user?.role?.Permissions) {
+  //         const isAdmin = user.role.name === "Admin";
+
+  //         if (isAdmin) {
+  //           // Admin sees all campaigns
+  //           filteredCampaigns = campaignsData.data;
+  //         } else {
+  //           // Non-admin users: Check specific permissions
+  //           const specificPermissions = user.role.Permissions.filter(
+  //             (perm) =>
+  //               perm.name === "getCampaignById" &&
+  //               perm.resourceType?.startsWith("campaign-")
+  //           );
+
+  //           const allowedCampaignIds = specificPermissions.map((perm) =>
+  //             parseInt(perm.resourceId)
+  //           );
+
+  //           // Check if user has general campaign:get permission
+  //           const hasGeneralPermission = user.role.Permissions.some(
+  //             (perm) => perm.name === "campaign:get"
+  //           );
+
+  //           // Check if user has campaign:create permission
+  //           const hasCreatePermission = user.role.Permissions.some(
+  //             (perm) => perm.name === "campaign:create"
+  //           );
+
+  //           if (hasGeneralPermission && allowedCampaignIds.length === 0) {
+  //             // User has full access (but not Admin)
+  //             filteredCampaigns = campaignsData.data;
+  //           } else if (hasGeneralPermission && allowedCampaignIds.length > 0) {
+  //             // User has general permission BUT also has specific restrictions
+  //             filteredCampaigns = campaignsData.data.filter((campaign) =>
+  //               allowedCampaignIds.includes(parseInt(campaign.id))
+  //             );
+  //           } else if (allowedCampaignIds.length > 0) {
+  //             // User only has specific campaign permissions
+  //             filteredCampaigns = campaignsData.data.filter((campaign) =>
+  //               allowedCampaignIds.includes(parseInt(campaign.id))
+  //             );
+  //           }
+
+  //           // Add campaigns created by the user (if they have create permission)
+  //           if (hasCreatePermission) {
+  //             const userCreatedCampaigns = campaignsData.data.filter(
+  //               (campaign) => campaign.createdBy === user.id
+  //             );
+  //             filteredCampaigns = [
+  //               ...filteredCampaigns,
+  //               ...userCreatedCampaigns.filter(
+  //                 (campaign) =>
+  //                   !filteredCampaigns.some((c) => c.id === campaign.id)
+  //               ),
+  //             ];
+  //           }
+  //         }
+  //       }
+
+  //       setCampaigns(filteredCampaigns);
+  //       setTotalItems(filteredCampaigns.length);
+  //       setTotalPages(Math.ceil(filteredCampaigns.length / entriesPerPage));
+  //     } catch (error) {
+  //       console.error("Error loading data:", error);
+  //       toast.error("Failed to load campaigns");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   loadData();
+  // }, [
+  //   currentPage,
+  //   entriesPerPage,
+  //   debouncedSearch,
+  //   user?.id,
+  //   user?.role?.name,
+  // ]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -420,18 +513,17 @@ const AllCampaigns = () => {
         const campaignsData = await fetchCampaigns({
           page: currentPage,
           limit: entriesPerPage,
+          search: debouncedSearch,
         });
 
         let filteredCampaigns = [];
 
-        if (campaignsData.data?.length && user?.role?.Permissions) {
+        if (user?.role?.Permissions) {
           const isAdmin = user.role.name === "Admin";
 
           if (isAdmin) {
-            // Admin sees all campaigns
-            filteredCampaigns = campaignsData.data;
+            filteredCampaigns = campaignsData.data || [];
           } else {
-            // Non-admin users: Check specific permissions
             const specificPermissions = user.role.Permissions.filter(
               (perm) =>
                 perm.name === "getCampaignById" &&
@@ -442,34 +534,28 @@ const AllCampaigns = () => {
               parseInt(perm.resourceId)
             );
 
-            // Check if user has general campaign:get permission
             const hasGeneralPermission = user.role.Permissions.some(
               (perm) => perm.name === "campaign:get"
             );
 
-            // Check if user has campaign:create permission
             const hasCreatePermission = user.role.Permissions.some(
               (perm) => perm.name === "campaign:create"
             );
 
             if (hasGeneralPermission && allowedCampaignIds.length === 0) {
-              // User has full access (but not Admin)
-              filteredCampaigns = campaignsData.data;
+              filteredCampaigns = campaignsData.data || [];
             } else if (hasGeneralPermission && allowedCampaignIds.length > 0) {
-              // User has general permission BUT also has specific restrictions
-              filteredCampaigns = campaignsData.data.filter((campaign) =>
-                allowedCampaignIds.includes(parseInt(campaign.id))
+              filteredCampaigns = (campaignsData.data || []).filter(
+                (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
               );
             } else if (allowedCampaignIds.length > 0) {
-              // User only has specific campaign permissions
-              filteredCampaigns = campaignsData.data.filter((campaign) =>
-                allowedCampaignIds.includes(parseInt(campaign.id))
+              filteredCampaigns = (campaignsData.data || []).filter(
+                (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
               );
             }
 
-            // Add campaigns created by the user (if they have create permission)
             if (hasCreatePermission) {
-              const userCreatedCampaigns = campaignsData.data.filter(
+              const userCreatedCampaigns = (campaignsData.data || []).filter(
                 (campaign) => campaign.createdBy === user.id
               );
               filteredCampaigns = [
@@ -488,14 +574,25 @@ const AllCampaigns = () => {
         setTotalPages(Math.ceil(filteredCampaigns.length / entriesPerPage));
       } catch (error) {
         console.error("Error loading data:", error);
-        toast.error("Failed to load campaigns");
+
+        // ✅ Instead of toaster, just show empty table
+        setCampaigns([]);
+        setTotalItems(0);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [currentPage, entriesPerPage, user?.id, user?.role?.name]);
+  }, [
+    currentPage,
+    entriesPerPage,
+    debouncedSearch,
+    user?.id,
+    user?.role?.name,
+  ]);
+
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
 
   const handlePageChange = (page) => {
@@ -546,9 +643,9 @@ const AllCampaigns = () => {
     );
   };
 
-  const filteredData = campaigns.filter((c) =>
-    c.campaignName?.toLowerCase().includes(searchText.toLowerCase())
-  );
+  // const filteredData = campaigns.filter((c) =>
+  //   c.campaignName?.toLowerCase().includes(searchText.toLowerCase())
+  // );
 
   const breadcrumbItems = [
     { title: "Campaigns", link: "/" },
@@ -608,8 +705,8 @@ const AllCampaigns = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredData.length > 0 ? (
-                        filteredData.map((row) => (
+                      {campaigns.length > 0 ? (
+                        campaigns.map((row) => (
                           <tr key={row.id}>
                             <td style={{ fontSize: "13px" }}>
                               <button
@@ -755,7 +852,7 @@ const AllCampaigns = () => {
                   </table>
                 </div>
 
-                {filteredData.length > 0 && (
+                {campaigns.length > 0 && (
                   <Row className="align-items-center mt-3">
                     <Col md={3} className="d-flex align-items-center">
                       <span className="me-2">Show:</span>
