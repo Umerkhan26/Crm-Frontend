@@ -123,42 +123,42 @@ const componentPermissions = {
     view: false,
     delete: false,
   },
-  Referrals: {
-    view: false,
-    create: false,
-    manage: false,
-  },
-  Settings: {
-    view: false,
-    edit: false,
-    permissions: false,
-    EmailTemplates: {
-      view: false,
-      edit: false,
-    },
-    EmailAction: {
-      view: false,
-      edit: false,
-      adminNotifications: false,
-      clientNotifications: false,
-    },
-    Notifications: {
-      view: false,
-      manage: false,
-    },
-    ActivityLogs: {
-      view: false,
-      filter: false,
-      export: false,
-      delete: false,
-    },
-    SystemSettings: {
-      view: false,
-      edit: false,
-      companyInfo: false,
-      appearance: false,
-    },
-  },
+  // Referrals: {
+  //   view: false,
+  //   create: false,
+  //   manage: false,
+  // },
+  // Settings: {
+  //   view: false,
+  //   edit: false,
+  //   permissions: false,
+  //   EmailTemplates: {
+  //     view: false,
+  //     edit: false,
+  //   },
+  //   EmailAction: {
+  //     view: false,
+  //     edit: false,
+  //     adminNotifications: false,
+  //     clientNotifications: false,
+  //   },
+  //   Notifications: {
+  //     view: false,
+  //     manage: false,
+  //   },
+  //   ActivityLogs: {
+  //     view: false,
+  //     filter: false,
+  //     export: false,
+  //     delete: false,
+  //   },
+  //   SystemSettings: {
+  //     view: false,
+  //     edit: false,
+  //     companyInfo: false,
+  //     appearance: false,
+  //   },
+  // },
 };
 
 const permissionMap = {
