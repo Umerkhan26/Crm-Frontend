@@ -314,10 +314,7 @@ export const getMenuItems = (user) => {
         {
           title: "All Sales",
           path: "/all-sales",
-          requiredPermissions: [
-            "PRODUCT_SALE_GET_ALL",
-            "PRODUCT_SALE_GET_BY_ID",
-          ],
+          requiredPermissions: ["SALE_GET_ALL", "SALE_GET_BY_ID"],
         },
       ],
       requiredPermissions: [],
