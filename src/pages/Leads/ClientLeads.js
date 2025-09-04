@@ -479,6 +479,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import TableContainer from "../../components/Common/TableContainer";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
+import { useDebounce } from "use-debounce";
 import {
   Card,
   CardBody,
@@ -579,7 +580,8 @@ const ClientLeads = () => {
       const response = await getAllClientLeads(
         pagination.currentPage,
         pagination.pageSize,
-        currentFilter.orderId
+        currentFilter.orderId,
+        debouncedSearch
       );
 
       console.log("ALL CLIENT LEAD", response);
@@ -610,9 +612,17 @@ const ClientLeads = () => {
     }));
   };
 
+  // Add a debounced version of searchText
+  const [debouncedSearch] = useDebounce(searchText, 500);
+
   useEffect(() => {
     fetchLeads();
-  }, [pagination.currentPage, pagination.pageSize, currentFilter.orderId]);
+  }, [
+    pagination.currentPage,
+    pagination.pageSize,
+    currentFilter.orderId,
+    debouncedSearch,
+  ]);
 
   const toggleClientDropdown = () => setClientDropdownOpen((prev) => !prev);
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
@@ -823,169 +833,169 @@ const ClientLeads = () => {
         <Breadcrumbs title="ALL CLIENT" breadcrumbItems={breadcrumbItems} />
         <Card>
           <CardBody>
-            {loading && <p>Loading leads...</p>}
-            {error && <p className="text-danger">Error: {error}</p>}
-            {!loading && !error && filteredLeads.length === 0 && (
+            {/* {loading && <p>Loading leads...</p>} */}
+            {/* {error && <p className="text-danger">Error: {error}</p>} */}
+            {/* {!loading && !error && filteredLeads.length === 0 && (
               <p>No leads found for Order #{currentFilter.orderId || "All"}.</p>
-            )}
-            {!loading && !error && filteredLeads.length > 0 && (
-              <>
-                <Row className="mb-3">
-                  {/* Client Dropdown */}
-                  <Col md={3}>
-                    <Dropdown
-                      isOpen={clientDropdownOpen}
-                      toggle={toggleClientDropdown}
-                    >
-                      <DropdownToggle
-                        caret
-                        className="w-100 d-flex align-items-center justify-content-between"
-                        style={{
-                          backgroundColor: "#f8f9fa",
-                          borderColor: "#dee2e6",
-                          color: "#495057",
-                          fontSize: "0.85rem",
-                          padding: "6px 10px",
-                          minHeight: "36px",
-                        }}
-                      >
-                        <div className="d-flex align-items-center">
-                          <FaUserTag className="me-2" />
-                          {selectedClient}
-                        </div>
-                      </DropdownToggle>
-                      <DropdownMenu className="w-100">
-                        <DropdownItem
-                          header
-                          className="d-flex align-items-center"
-                        >
-                          <FaFilter className="me-2" />
-                          Select Client
-                        </DropdownItem>
-                        {clients.map((client) => {
-                          const fullName = `${client.firstname} ${client.lastname}`;
-                          return (
-                            <DropdownItem
-                              key={client.id}
-                              onClick={() => setSelectedClient(fullName)}
-                              active={selectedClient === fullName}
-                              className="d-flex align-items-center"
-                            >
-                              <FaUserTag className="me-2" />
-                              {fullName}
-                            </DropdownItem>
-                          );
-                        })}
-                      </DropdownMenu>
-                    </Dropdown>
-                  </Col>
-
-                  {/* Vendor Dropdown */}
-                  <Col md={3}>
-                    <Dropdown
-                      isOpen={vendorDropdownOpen}
-                      toggle={toggleVendorDropdown}
-                    >
-                      <DropdownToggle
-                        caret
-                        className="w-100 d-flex align-items-center justify-content-between"
-                        style={{
-                          backgroundColor: "#f8f9fa",
-                          borderColor: "#dee2e6",
-                          color: "#495057",
-                          fontSize: "0.85rem",
-                          padding: "6px 10px",
-                          minHeight: "36px",
-                        }}
-                      >
-                        <div className="d-flex align-items-center">
-                          <FaBoxes className="me-2" />
-                          {selectedVendor}
-                        </div>
-                      </DropdownToggle>
-                      <DropdownMenu className="w-100">
-                        <DropdownItem
-                          header
-                          className="d-flex align-items-center"
-                        >
-                          <FaFilter className="me-2" />
-                          Select Vendor
-                        </DropdownItem>
-                        {vendors.map((vendor) => {
-                          const fullName = `${vendor.firstname} ${vendor.lastname}`;
-                          return (
-                            <DropdownItem
-                              key={vendor.id}
-                              onClick={() => setSelectedVendor(fullName)}
-                              active={selectedVendor === fullName}
-                              className="d-flex align-items-center"
-                            >
-                              <FaBoxes className="me-2" />
-                              {fullName}
-                            </DropdownItem>
-                          );
-                        })}
-                      </DropdownMenu>
-                    </Dropdown>
-                  </Col>
-                  {/* Filter Button */}
-                  <Col md={2}>
-                    <Button
-                      color="primary"
-                      className="w-100 d-flex align-items-center "
+            )} */}
+            {/* {!loading && !error && filteredLeads.length > 0 && ( */}
+            <>
+              <Row className="mb-3">
+                {/* Client Dropdown */}
+                <Col md={3}>
+                  <Dropdown
+                    isOpen={clientDropdownOpen}
+                    toggle={toggleClientDropdown}
+                  >
+                    <DropdownToggle
+                      caret
+                      className="w-100 d-flex align-items-center justify-content-between"
                       style={{
+                        backgroundColor: "#f8f9fa",
+                        borderColor: "#dee2e6",
+                        color: "#495057",
                         fontSize: "0.85rem",
                         padding: "6px 10px",
                         minHeight: "36px",
                       }}
-                      onClick={() => {
-                        console.log(
-                          "Filter clicked with:",
-                          selectedClient,
-                          selectedVendor,
-                          currentFilter.status
+                    >
+                      <div className="d-flex align-items-center">
+                        <FaUserTag className="me-2" />
+                        {selectedClient}
+                      </div>
+                    </DropdownToggle>
+                    <DropdownMenu className="w-100">
+                      <DropdownItem
+                        header
+                        className="d-flex align-items-center"
+                      >
+                        <FaFilter className="me-2" />
+                        Select Client
+                      </DropdownItem>
+                      {clients.map((client) => {
+                        const fullName = `${client.firstname} ${client.lastname}`;
+                        return (
+                          <DropdownItem
+                            key={client.id}
+                            onClick={() => setSelectedClient(fullName)}
+                            active={selectedClient === fullName}
+                            className="d-flex align-items-center"
+                          >
+                            <FaUserTag className="me-2" />
+                            {fullName}
+                          </DropdownItem>
                         );
+                      })}
+                    </DropdownMenu>
+                  </Dropdown>
+                </Col>
+
+                {/* Vendor Dropdown */}
+                <Col md={3}>
+                  <Dropdown
+                    isOpen={vendorDropdownOpen}
+                    toggle={toggleVendorDropdown}
+                  >
+                    <DropdownToggle
+                      caret
+                      className="w-100 d-flex align-items-center justify-content-between"
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        borderColor: "#dee2e6",
+                        color: "#495057",
+                        fontSize: "0.85rem",
+                        padding: "6px 10px",
+                        minHeight: "36px",
                       }}
                     >
-                      <FaFilter className="me-2" />
-                      Filter
-                    </Button>
-                  </Col>
-
-                  {/* Search */}
-                  <Col>
-                    <div className="d-flex justify-content-end align-items-end mb-3">
-                      <div>
-                        <input
-                          type="text"
-                          style={{
-                            fontSize: "0.85rem",
-                            padding: "6px 10px",
-                            minHeight: "36px",
-                          }}
-                          className="form-control form-control-sm"
-                          placeholder="Search..."
-                          value={searchText}
-                          onChange={(e) => setSearchText(e.target.value)}
-                        />
+                      <div className="d-flex align-items-center">
+                        <FaBoxes className="me-2" />
+                        {selectedVendor}
                       </div>
-                    </div>
-                  </Col>
-                </Row>
+                    </DropdownToggle>
+                    <DropdownMenu className="w-100">
+                      <DropdownItem
+                        header
+                        className="d-flex align-items-center"
+                      >
+                        <FaFilter className="me-2" />
+                        Select Vendor
+                      </DropdownItem>
+                      {vendors.map((vendor) => {
+                        const fullName = `${vendor.firstname} ${vendor.lastname}`;
+                        return (
+                          <DropdownItem
+                            key={vendor.id}
+                            onClick={() => setSelectedVendor(fullName)}
+                            active={selectedVendor === fullName}
+                            className="d-flex align-items-center"
+                          >
+                            <FaBoxes className="me-2" />
+                            {fullName}
+                          </DropdownItem>
+                        );
+                      })}
+                    </DropdownMenu>
+                  </Dropdown>
+                </Col>
+                {/* Filter Button */}
+                <Col md={2}>
+                  <Button
+                    color="primary"
+                    className="w-100 d-flex align-items-center "
+                    style={{
+                      fontSize: "0.85rem",
+                      padding: "6px 10px",
+                      minHeight: "36px",
+                    }}
+                    onClick={() => {
+                      console.log(
+                        "Filter clicked with:",
+                        selectedClient,
+                        selectedVendor,
+                        currentFilter.status
+                      );
+                    }}
+                  >
+                    <FaFilter className="me-2" />
+                    Filter
+                  </Button>
+                </Col>
 
-                <TableContainer
-                  columns={columns || []}
-                  data={filteredLeads || []}
-                  isPagination={true}
-                  iscustomPageSize={false}
-                  isBordered={false}
-                  className="custom-table"
-                  pagination={pagination}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                />
-              </>
-            )}
+                {/* Search */}
+                <Col>
+                  <div className="d-flex justify-content-end align-items-end mb-3">
+                    <div>
+                      <input
+                        type="text"
+                        style={{
+                          fontSize: "0.85rem",
+                          padding: "6px 10px",
+                          minHeight: "36px",
+                        }}
+                        className="form-control form-control-sm"
+                        placeholder="Search..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              <TableContainer
+                columns={columns || []}
+                data={filteredLeads || []}
+                isPagination={true}
+                iscustomPageSize={false}
+                isBordered={false}
+                className="custom-table"
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </>
+            {/* )} */}
           </CardBody>
         </Card>
       </Container>

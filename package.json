@@ -87,7 +87,7 @@
     "styled-components": "^6.1.17",
     "sweetalert2": "^11.22.0",
     "toastr": "^2.1.4",
-    "use-debounce": "^10.0.5",
+    "use-debounce": "^10.0.6",
     "xlsx": "^0.18.5",
     "yet-another-react-lightbox": "^3.21.6",
     "yup": "^1.6.1"
