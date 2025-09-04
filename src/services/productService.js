@@ -231,42 +231,6 @@ export const deleteProduct = async (id) => {
   }
 };
 
-// export const getAllSales = async ({
-//   page = 1,
-//   limit = 10,
-//   search = "",
-//   productType = "",
-//   status = "",
-// }) => {
-//   try {
-//     const token = localStorage.getItem("token"); // Assuming token is stored in localStorage
-//     const queryParams = new URLSearchParams({
-//       page: page.toString(),
-//       limit: limit.toString(),
-//       search,
-//       productType,
-//       status,
-//     }).toString();
-
-//     const response = await fetch(`${API_URL}/getAllSales?${queryParams}`, {
-//       method: "GET",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${token}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       throw new Error("Failed to fetch sales");
-//     }
-
-//     const data = await response.json();
-//     return data;
-//   } catch (error) {
-//     throw new Error(error.message || "Error fetching sales");
-//   }
-// };
-
 export const getAllSales = async (params = {}) => {
   try {
     const token = localStorage.getItem("token");

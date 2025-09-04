@@ -223,8 +223,8 @@ const ConvertToSaleModal = ({
     const loadProducts = async () => {
       try {
         setLoading(true);
-        const result = await fetchAllProducts();
-        const allProducts = result || [];
+        const result = await fetchAllProducts({ page: 1, limit: 10 });
+        const allProducts = result?.data || [];
 
         const names = Array.from(
           new Set(
@@ -356,9 +356,7 @@ const ConvertToSaleModal = ({
         toggle={toggle}
         className="py-2"
         style={{ fontSize: "0.9rem" }}
-      >
-        Convert Lead to Sale
-      </ModalHeader>
+      ></ModalHeader>
       <ModalBody className="p-2">
         {loading ? (
           <div className="text-center py-2">

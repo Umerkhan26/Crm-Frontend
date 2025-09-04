@@ -7,6 +7,9 @@ import {
   Button,
   Badge,
   UncontrolledTooltip,
+  Row,
+  Col,
+  Input,
 } from "reactstrap";
 import { FiTrash2 } from "react-icons/fi";
 import TableContainer from "../../components/Common/TableContainer";
@@ -21,6 +24,7 @@ const Sale = () => {
   const { confirmDelete } = useDeleteConfirmation();
   const [sales, setSales] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState({
     currentPage: 1,
     pageSize: 10,
@@ -42,6 +46,7 @@ const Sale = () => {
       const response = await getAllSales({
         page: pagination.currentPage,
         limit: pagination.pageSize,
+        search: searchText,
       });
 
       console.log("Raw API response:", response);
@@ -118,7 +123,7 @@ const Sale = () => {
       setIsLoading(false);
       console.log("isLoading set to:", false);
     }
-  }, [pagination.currentPage, pagination.pageSize, isAdminUser]);
+  }, [pagination.currentPage, pagination.pageSize, isAdminUser, searchText]);
   useEffect(() => {
     getSales();
   }, [getSales]);
@@ -338,31 +343,43 @@ const Sale = () => {
         <Breadcrumbs title="Sales" breadcrumbItems={breadcrumbItems} />
         <Card>
           <CardBody>
+            <Row className="mb-3">
+              <Col md={3} className="ms-auto">
+                <Input
+                  type="text"
+                  placeholder="Search sales..."
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                  }}
+                />
+              </Col>
+            </Row>
+
             {isLoading ? (
               <div className="text-center py-5">
                 <Spinner color="primary" />
                 <p>Loading sales...</p>
               </div>
-            ) : sales.length === 0 ? (
-              <div className="text-center py-5">
-                <h4>No sales data available</h4>
-                <p>No converted sales found. Check back later.</p>
-              </div>
             ) : (
-              <>
-                <TableContainer
-                  columns={columns}
-                  data={sales}
-                  isPagination={true}
-                  iscustomPageSize={false}
-                  isBordered={false}
-                  customPageSize={pagination.pageSize}
-                  pagination={pagination}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                  className="custom-table"
-                />
-              </>
+              <TableContainer
+                columns={columns}
+                data={sales}
+                isPagination={true}
+                iscustomPageSize={false}
+                isBordered={false}
+                customPageSize={pagination.pageSize}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                className="custom-table"
+                noDataMessage={
+                  searchText
+                    ? `No sales found for "${searchText}"`
+                    : "No sales data available"
+                }
+              />
             )}
           </CardBody>
         </Card>
