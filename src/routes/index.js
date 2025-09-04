@@ -557,7 +557,7 @@ const authProtectedRoutes = [
   {
     path: "/user-details/:userId",
     component: <UserDetailsPage />,
-    requiredPermissions: ["user:getById"], // Add appropriate permissions
+    requiredPermissions: ["user:getById"],
   },
   {
     path: "/user-register",
