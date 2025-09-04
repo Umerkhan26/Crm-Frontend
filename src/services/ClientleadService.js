@@ -23,15 +23,72 @@ export const createClientLead = async (leadData) => {
   }
 };
 
+// export const getAllClientLeads = async (
+//   page = 1,
+//   limit = 10,
+//   orderId = null
+// ) => {
+//   try {
+//     let url = `${API_URL}/getAllClientLeads?page=${page}&limit=${limit}`;
+//     if (orderId) {
+//       url += `&orderId=${orderId}`;
+//     }
+
+//     const response = await fetch(url, {
+//       method: "GET",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${localStorage.getItem("token")}`,
+//       },
+//     });
+
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! Status: ${response.status}`);
+//     }
+
+//     const result = await response.json();
+//     if (!result.success) {
+//       throw new Error(result.message || "Failed to fetch leads");
+//     }
+
+//     return {
+//       data: result.data.map((lead) => ({
+//         id: lead.id,
+//         orderId: lead.order_id,
+//         campaignName: lead.campaign?.campaignName || "",
+//         leadData: JSON.parse(lead.leadData || "{}"),
+//         status: lead.status,
+//         createdAt: lead.createdAt,
+//         updatedAt: lead.updatedAt,
+//       })),
+//       totalItems: result.totalItems,
+//       totalPages: result.totalPages,
+//       currentPage: result.currentPage,
+//     };
+//   } catch (error) {
+//     console.error("Error in getAllClientLeads:", error);
+//     throw new Error(`Error fetching leads: ${error.message}`);
+//   }
+// };
+
 export const getAllClientLeads = async (
   page = 1,
   limit = 10,
-  orderId = null
+  orderId = null,
+  searchText = "",
+  status = "all"
 ) => {
   try {
     let url = `${API_URL}/getAllClientLeads?page=${page}&limit=${limit}`;
+
     if (orderId) {
       url += `&orderId=${orderId}`;
+    }
+    if (searchText) {
+      url += `&search=${encodeURIComponent(searchText)}`;
+    }
+    if (status && status !== "all") {
+      url += `&status=${status}`;
     }
 
     const response = await fetch(url, {
@@ -58,6 +115,8 @@ export const getAllClientLeads = async (
         campaignName: lead.campaign?.campaignName || "",
         leadData: JSON.parse(lead.leadData || "{}"),
         status: lead.status,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
       })),
       totalItems: result.totalItems,
       totalPages: result.totalPages,
@@ -68,6 +127,7 @@ export const getAllClientLeads = async (
     throw new Error(`Error fetching leads: ${error.message}`);
   }
 };
+
 export const updateClientLead = async (id, updateData) => {
   try {
     const response = await fetch(`${API_URL}/updateClientLead/${id}`, {
@@ -148,6 +208,34 @@ export const updateLeadStatus = async (id, status) => {
     return await response.json();
   } catch (error) {
     console.error("Error updating lead status:", error);
+    throw error;
+  }
+};
+
+export const getClientLeadActivitiesByLeadId = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/getClientLeadActivities/${id}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch lead activities");
+    }
+
+    const data = await response.json();
+
+    // Handle both response formats for backward compatibility
+    if (data.success !== undefined) {
+      // Backend returns { success: true, data: [...] }
+      return data.data || [];
+    } else {
+      // Backend returns array directly
+      return Array.isArray(data) ? data : [];
+    }
+  } catch (error) {
+    console.error("Error fetching lead activities:", error);
     throw error;
   }
 };

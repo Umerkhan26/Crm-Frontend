@@ -183,7 +183,7 @@ const VendorForm = ({
           </div>
         </Col>
       </Row>
-
+      {/* 
       <Row>
         <Col md="6">
           <div className="mb-3">
@@ -217,9 +217,9 @@ const VendorForm = ({
             </div>
           </div>
         </Col>
-      </Row>
+      </Row> */}
 
-      <Row>
+      {/* <Row>
         <Col md="6">
           <div className="mb-3">
             <Label className="form-label">Nav Text Color</Label>
@@ -252,9 +252,9 @@ const VendorForm = ({
             </div>
           </div>
         </Col>
-      </Row>
+      </Row> */}
 
-      <Row>
+      {/* <Row>
         <Col md="12">
           <div className="mb-3">
             <Label className="form-label">Branch Logo</Label>
@@ -272,7 +272,6 @@ const VendorForm = ({
                 id="branchLogo"
               />
               <Label className="custom-file-label" htmlFor="branchLogo">
-                {/* {formData.branchlogo?.name || "Choose file"} */}
               </Label>
             </div>
           </div>
@@ -306,7 +305,7 @@ const VendorForm = ({
             />
           </div>
         </Col>
-      </Row>
+      </Row> */}
     </>
   );
 };

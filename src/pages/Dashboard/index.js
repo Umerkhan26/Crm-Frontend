@@ -158,6 +158,7 @@ const Dashboard = () => {
 
   const userId = localStorage.getItem("userId");
   const userRole = localStorage.getItem("userrole");
+  const user = JSON.parse(localStorage.getItem("authUser"));
 
   // State for leads, loading, and error
   const [leads, setLeads] = useState([]);
@@ -230,7 +231,7 @@ const Dashboard = () => {
             </Col>
           </Row>
           <Row>
-            <RecentlyActivity userId={userId} />
+            <RecentlyActivity userId={userId} userrole={user?.userrole} />
             <LatestTransactions />
           </Row>
           <Row>{/* <ChatBox /> */}</Row>

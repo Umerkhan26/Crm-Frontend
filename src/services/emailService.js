@@ -20,7 +20,7 @@ export const updateEmailPermission = async (
 ) => {
   try {
     const serializedRoles = Array.isArray(allowedRoles)
-      ? JSON.stringify(allowedRoles.map((r) => r.id))
+      ? JSON.stringify(allowedRoles.map((r) => r.name)) // ✅ send role names
       : null;
 
     const response = await fetch(
@@ -49,7 +49,7 @@ export const updateEmailPermission = async (
   }
 };
 
-export const sendEmailToLead = async (leadId, templateKey) => {
+export const sendEmailToLead = async (leadId, templateKey, leadData = null) => {
   try {
     const response = await fetch(`${API_URL}/leads/${leadId}/send-email`, {
       method: "POST",
@@ -57,18 +57,46 @@ export const sendEmailToLead = async (leadId, templateKey) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
-      body: JSON.stringify({ templateKey }),
+      body: JSON.stringify({
+        templateKey,
+        leadData: leadData, // Send the lead data you already have
+      }),
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       throw new Error(data.message || "Failed to send email");
     }
-
     return data;
   } catch (error) {
     console.error("Error sending email to lead:", error);
     throw error;
   }
+};
+
+export const sendEmailToClientLead = async (clientLeadId, templateKey) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Authentication token missing");
+  }
+
+  const response = await fetch(
+    `${API_URL}/sendEmailToClientLead/${clientLeadId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        templateKey,
+      }),
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send email to client lead");
+  }
+  return data;
 };

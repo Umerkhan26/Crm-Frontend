@@ -49,10 +49,10 @@ const ImportLeadsModal = ({
     const campaignFields = selectedOrder?.campaign?.fields
       ? JSON.parse(selectedOrder.campaign.fields)
       : [];
-    const leadDataSample = campaignFields.reduce(
-      (acc, field) => ({ ...acc, [field.col_slug]: "sample_value" }),
-      {}
-    );
+    // const leadDataSample = campaignFields.reduce(
+    //   (acc, field) => ({ ...acc, [field.col_slug]: "sample_value" }),
+    //   {}
+    // );
 
     const sampleData = [
       ["Order ID", "Campaign ID", ...campaignFields.map((f) => f.col_name)],

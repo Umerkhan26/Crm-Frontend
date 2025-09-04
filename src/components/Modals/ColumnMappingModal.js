@@ -172,6 +172,7 @@ import { FaFileImport } from "react-icons/fa";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import { importClientLeads } from "../../services/orderService";
+import { ClipLoader } from "react-spinners";
 
 const ColumnMappingModal = ({
   isOpen,
@@ -183,6 +184,7 @@ const ColumnMappingModal = ({
 }) => {
   const [mapping, setMapping] = useState({});
   const [fields, setFields] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (selectedOrder && selectedOrder.campaign) {
@@ -234,7 +236,7 @@ const ColumnMappingModal = ({
       toast.error("No order or file selected");
       return;
     }
-
+    setLoading(true);
     try {
       const reader = new FileReader();
       reader.onload = async (event) => {
@@ -295,12 +297,15 @@ const ColumnMappingModal = ({
         } catch (error) {
           console.error("Error processing file:", error);
           toast.error("Failed to process file: " + error.message);
+        } finally {
+          setLoading(false);
         }
       };
       reader.readAsBinaryString(selectedFile);
     } catch (error) {
       console.error("Import error:", error);
       toast.error(error.message || "Failed to import leads");
+      setLoading(false);
     }
   };
 
@@ -311,6 +316,25 @@ const ColumnMappingModal = ({
       size="md"
       style={{ maxWidth: "550px" }}
     >
+      {loading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(255, 255, 255, 0.8)",
+            zIndex: 1050,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "8px",
+          }}
+        >
+          <ClipLoader size={50} color="#0d6efd" />
+        </div>
+      )}
       <ModalHeader
         toggle={toggle}
         style={{ fontSize: "1.1rem", padding: "0.6rem" }}

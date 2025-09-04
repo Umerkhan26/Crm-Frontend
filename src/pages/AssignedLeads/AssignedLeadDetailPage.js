@@ -189,8 +189,10 @@ const AssignedLeadDetailPage = () => {
         const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
         console.log("Lead activity", activitiesResponse);
 
-        const fetchedActivities =
-          activitiesResponse.data || activitiesResponse.activities || [];
+        const fetchedActivities = Array.isArray(activitiesResponse)
+          ? activitiesResponse
+          : activitiesResponse.data || activitiesResponse.activities || [];
+
         setActivities(fetchedActivities);
       } catch (err) {
         console.error("Error fetching lead details:", err);
@@ -222,6 +224,7 @@ const AssignedLeadDetailPage = () => {
         type: "comment",
         notebleId: leadId,
         notebleType: "lead",
+        userId: currentUser.id,
       };
 
       console.log("Submitting Note:", noteData);
@@ -259,6 +262,7 @@ const AssignedLeadDetailPage = () => {
         try {
           setActivitiesLoading(true);
           const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
+          console.log("Lead Activity", activitiesResponse);
           const fetchedActivities =
             activitiesResponse.data || activitiesResponse.activities || [];
           setActivities(fetchedActivities);
@@ -322,6 +326,7 @@ const AssignedLeadDetailPage = () => {
         try {
           setActivitiesLoading(true);
           const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
+          console.log("Lead activity", activitiesResponse);
           const fetchedActivities =
             activitiesResponse.data || activitiesResponse.activities || [];
           setActivities(fetchedActivities);
@@ -909,7 +914,7 @@ const AssignedLeadDetailPage = () => {
                       responsive
                       size="sm"
                       className="mb-0"
-                      style={{ fontSize: "0.75rem" }} // Smaller font size
+                      style={{ fontSize: "0.75rem" }}
                     >
                       <thead className="table-light">
                         <tr>

@@ -16,13 +16,8 @@ import { createProduct, updateProduct } from "../../services/productService";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchCampaigns } from "../../services/orderService";
-import { Rss } from "react-feather";
 
-const productStatusOptions = [
-  { value: "pending", label: "Pending" },
-  { value: "converted", label: "Converted" },
-  { value: "cancelled", label: "Cancelled" },
-];
+const productStatusOptions = [{ value: "pending", label: "Pending" }];
 
 const NewProduct = () => {
   const navigate = useNavigate();

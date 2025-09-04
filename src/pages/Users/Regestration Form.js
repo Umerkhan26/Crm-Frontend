@@ -542,7 +542,6 @@ import { registerUser, updateUserById } from "../../services/auth";
 import { ClipLoader } from "react-spinners";
 import { getAllRoles } from "../../services/roleService";
 import VendorForm from "./Registration/VenderForm";
-import { label } from "yet-another-react-lightbox";
 
 const RegisterUser = () => {
   const { state } = useLocation();
@@ -617,7 +616,7 @@ const RegisterUser = () => {
             website: user.user.website || "",
             coverage: user.user.coverage || "",
             linkedin: user.user.linkedin || "",
-            userImage: null,
+            userImage: user.user.userImage || null,
             referred_to: user.user.referred_to || "",
             smtpemail: user.user.smtpemail || "",
             smtppassword: user.user.smtppassword || "",
@@ -670,12 +669,28 @@ const RegisterUser = () => {
     { value: "subVendor2", label: "subVendor2" },
   ];
 
+  // const handleChange = (e) => {
+  //   const { name, value, files } = e.target;
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [name]: files ? files[0] : value,
+  //   }));
+  // };
+
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+    const { name, value, files, type } = e.target;
+
+    if (type === "file" && files && files.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: files[0],
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleRoleChange = (selectedOption) => {
@@ -689,7 +704,6 @@ const RegisterUser = () => {
   const handleSubVendorChange = (selectedOptions) => {
     setSelectedSubVendors(selectedOptions || []);
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -707,17 +721,31 @@ const RegisterUser = () => {
     }
 
     const formPayload = new FormData();
+
+    // Append all fields EXCEPT userImage first
     for (const key in payload) {
-      if (key === "userImage" && payload[key] instanceof File) {
-        formPayload.append(key, payload[key], payload[key].name);
-      } else if (payload[key] !== null && payload[key] !== undefined) {
+      if (
+        key !== "userImage" &&
+        payload[key] !== null &&
+        payload[key] !== undefined
+      ) {
         formPayload.append(key, payload[key]);
       }
     }
 
-    for (let [key, value] of formPayload.entries()) {
-      console.log(`${key}:`, value);
+    // ONLY append userImage if it's a File (new image selected)
+    if (formData.userImage instanceof File) {
+      formPayload.append(
+        "userImage",
+        formData.userImage,
+        formData.userImage.name
+      );
     }
+    // If userImage is explicitly set to null (remove image)
+    else if (formData.userImage === null) {
+      formPayload.append("userImage", "null");
+    }
+    // If userImage is a string (existing image URL), don't send anything to preserve it
 
     try {
       const token = localStorage.getItem("token");
@@ -731,7 +759,6 @@ const RegisterUser = () => {
         toast.success("User registered successfully!");
       }
 
-      console.log("Server response:", result);
       navigate("/allUsers");
     } catch (error) {
       console.error("Error:", error);
@@ -742,7 +769,6 @@ const RegisterUser = () => {
       setLoading(false);
     }
   };
-
   const customStyles = {
     control: (provided) => ({
       ...provided,
@@ -960,6 +986,7 @@ const RegisterUser = () => {
                           />
                         </div>
                       </Col>
+
                       <Col md="6">
                         <div className="mb-3">
                           <Label className="form-label">Display Picture</Label>
@@ -981,34 +1008,53 @@ const RegisterUser = () => {
                               className="custom-file-label"
                               htmlFor="displayPicture"
                             >
-                              {formData.userImage?.name || "Choose file"}
+                              {formData.userImage instanceof File
+                                ? formData.userImage.name
+                                : "Choose file"}
                             </Label>
                           </div>
-                          {user?.user.userImage && !formData.userImage && (
-                            <div>
-                              <p className="mb-2">Current image:</p>
-                              <div
-                                style={{
-                                  width: "60px",
-                                  height: "60px",
-                                  borderRadius: "50%",
-                                  overflow: "hidden",
-                                  border: "2px solid #dee2e6",
-                                }}
-                              >
-                                <img
-                                  src={user.user.userImage}
-                                  alt="Current profile"
+
+                          {/* Show current image if it exists and no new file is selected */}
+                          {user?.user.userImage &&
+                            !(formData.userImage instanceof File) && (
+                              <div className="mt-2">
+                                <p className="mb-2">Current image:</p>
+                                <div
                                   style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    objectPosition: "top",
+                                    width: "60px",
+                                    height: "60px",
+                                    borderRadius: "50%",
+                                    overflow: "hidden",
+                                    border: "2px solid #dee2e6",
                                   }}
-                                />
+                                >
+                                  <img
+                                    src={user.user.userImage}
+                                    alt="Current profile"
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                      objectPosition: "top",
+                                    }}
+                                  />
+                                </div>
+                                <Button
+                                  color="danger"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      userImage: null,
+                                    }))
+                                  }
+                                  disabled={formData.userImage === null}
+                                >
+                                  Remove Image
+                                </Button>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </div>
                       </Col>
                     </Row>
@@ -1028,6 +1074,7 @@ const RegisterUser = () => {
                             classNamePrefix="select"
                             styles={customStyles}
                             required
+                            isClearable
                           />
                         </div>
                       </Col>
@@ -1043,6 +1090,7 @@ const RegisterUser = () => {
                             onChange={handleUserRoleChange}
                             className="basic-single"
                             classNamePrefix="select"
+                            isClearable
                             styles={customStyles}
                           />
                         </div>

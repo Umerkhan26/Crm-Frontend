@@ -10,6 +10,8 @@ const handleResponse = async (response) => {
 
 export const addNote = async (noteData) => {
   try {
+    console.log("Sending note data:", noteData); // Debug log
+
     const response = await fetch(`${API_URL}/add`, {
       method: "POST",
       headers: {
@@ -18,6 +20,12 @@ export const addNote = async (noteData) => {
       },
       body: JSON.stringify(noteData),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Server error response:", errorData); // Debug log
+      throw new Error(errorData.message || "Something went wrong");
+    }
     return handleResponse(response);
   } catch (error) {
     console.error("Error adding note:", error);

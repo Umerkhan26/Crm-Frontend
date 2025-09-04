@@ -235,8 +235,6 @@ export const fetchVendorsAndClients = async (search = "") => {
   }
 };
 
-// ... existing imports and functions ...
-
 export const fetchOrdersByVendorId = async (
   vendorId,
   page = 1,

@@ -530,17 +530,19 @@ import SystemSettingsForm from "../pages/Setting/SystemSettingsForm";
 import RegisterUser from "../pages/Users/Regestration Form";
 import AllRole from "../pages/Role/AllRole";
 import CreateRole from "../pages/Role/CreateRole";
-import Product from "../pages/Product/Product";
+// import Product from "../pages/Product/Product";
 import AssignedLeads from "../pages/AssignedLeads";
 import UserDetailsPage from "../pages/Users/UserDetailsPage";
-import NewProductSale from "../pages/Product/CreateProduct";
+// import NewProductSale from "../pages/Product/CreateProduct";
 import NewProduct from "../pages/Product/CreateProduct";
 import AllProducts from "../pages/Product/AllProducts";
 import Sale from "../pages/Product/Sales";
-import LeadDetailModal from "../components/Modals/LeadDetailModal";
-import LeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
+// import LeadDetailModal from "../components/Modals/LeadDetailModal";
+// import LeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
 import AssignedLeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
 import SaleDetails from "../pages/Product/SaleDetailsPage";
+import ClientLeadDetailPage from "../components/Modals/ClientLeadDetailPage";
+import MasterLeadDetailPage from "../components/Modals/LeadDetailModal";
 
 const authProtectedRoutes = [
   // Tables
@@ -600,11 +602,31 @@ const authProtectedRoutes = [
     component: <ClientLeads />,
     requiredPermissions: ["clientLead:getAll"],
   },
+
+  {
+    path: "/client-leads/:leadId",
+    component: <ClientLeadDetailPage />,
+    requiredPermissions: ["clientLead:view"],
+    exact: true,
+  },
   {
     path: "/master-lead-index",
     component: <MasterLead />,
     requiredPermissions: ["lead:getAll"],
   },
+
+  {
+    path: "/master-leads/:leadId",
+    component: <MasterLeadDetailPage />,
+    requiredPermissions: ["lead:view"],
+    exact: true,
+  },
+
+  // {
+  //   path: "/master-leads/:leadId",
+  //   component: <MasterLeadDetailPage />,
+  // },
+
   {
     path: "/user-details/:userId",
     component: <UserDetailsPage />,
@@ -614,7 +636,7 @@ const authProtectedRoutes = [
   {
     path: "/assigned-leads",
     component: <AssignedLeads />,
-    requiredPermissions: ["lead:getByAssignee"],
+    requiredPermissions: ["assignedLead:getByAssignee"],
     exact: true,
   },
   {

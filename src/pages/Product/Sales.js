@@ -1,705 +1,3 @@
-// import React, { useMemo, useEffect, useState, useCallback } from "react";
-// import { Container, Card, CardBody, Spinner, Button } from "reactstrap";
-// import { FiTrash2 } from "react-icons/fi";
-// import TableContainer from "../../components/Common/TableContainer";
-// import Breadcrumbs from "../../components/Common/Breadcrumb";
-// import { fetchSales, deleteSaleById } from "../../services/productService";
-// import { toast } from "react-toastify";
-// import { useNavigate } from "react-router-dom";
-
-// const Sale = () => {
-//   const [sales, setSales] = useState([]);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [pagination, setPagination] = useState({
-//     pageIndex: 1,
-//     pageSize: 10,
-//     totalRecords: 0,
-//   });
-
-//   const navigate = useNavigate();
-
-//   const getSales = useCallback(async () => {
-//     setIsLoading(true);
-//     try {
-//       const response = await fetchSales({
-//         page: pagination.pageIndex,
-//         limit: pagination.pageSize,
-//       });
-
-//       console.log("Fetched sales data:", response);
-
-//       const records = Array.isArray(response) ? response : [];
-//       setSales(records);
-//       setPagination((prev) => ({
-//         ...prev,
-//         totalRecords: records.length,
-//       }));
-//     } catch (error) {
-//       console.error("Failed to fetch sales:", error.message);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [pagination.pageIndex, pagination.pageSize]);
-
-//   useEffect(() => {
-//     getSales();
-//   }, [getSales]);
-
-//   const handlePageChange = (newPage) => {
-//     setPagination((prev) => ({ ...prev, pageIndex: newPage }));
-//   };
-
-//   const handlePageSizeChange = (newSize) => {
-//     setPagination((prev) => ({
-//       ...prev,
-//       pageSize: newSize,
-//       pageIndex: 1,
-//     }));
-//   };
-
-//   const handleDelete = async (id) => {
-//     if (!window.confirm("Are you sure you want to delete this sale?")) return;
-
-//     try {
-//       await deleteSaleById(id);
-//       toast.success("Sale deleted successfully");
-//       getSales(); // Refresh after delete
-//     } catch (error) {
-//       console.error("Delete error:", error.message);
-//       toast.error(`Failed to delete sale: ${error.message}`);
-//     }
-//   };
-
-//   const navigateToSale = (id) => {
-//     navigate(`/sale-details/${id}`);
-//   };
-//   const renderClickableCell = (row, value, formatter) => {
-//     return (
-//       <div
-//         style={{ cursor: "pointer" }}
-//         onClick={() => navigateToSale(row.original.id)}
-//       >
-//         {formatter ? formatter(value) : value || "N/A"}
-//       </div>
-//     );
-//   };
-
-//   const columns = useMemo(
-//     () => [
-//       {
-//         Header: "Product Type",
-//         accessor: "productType",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Price",
-//         accessor: "price",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(
-//             row,
-//             value,
-//             (v) => `$${parseFloat(v || 0).toFixed(2)}`
-//           ),
-//       },
-//       {
-//         Header: "Status",
-//         accessor: "status",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) => (
-//             <span
-//               className={`badge text-uppercase ${
-//                 v === "converted"
-//                   ? "bg-success"
-//                   : v === "pending"
-//                   ? "bg-warning"
-//                   : "bg-danger"
-//               }`}
-//             >
-//               {v}
-//             </span>
-//           )),
-//       },
-//       {
-//         Header: "Lead Campaign",
-//         accessor: "Lead.campaignName",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Created By",
-//         accessor: "User.firstname",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Conversion Date",
-//         accessor: "conversionDate",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) =>
-//             v ? new Date(v).toLocaleDateString() : "N/A"
-//           ),
-//       },
-//       {
-//         Header: "Action",
-//         disableFilters: true,
-//         Cell: ({ row }) => (
-//           <div className="d-flex gap-2">
-//             <Button
-//               color="danger"
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={(e) => {
-//                 e.stopPropagation(); // prevent row click
-//                 handleDelete(row.original.id);
-//               }}
-//               title="Delete"
-//             >
-//               <FiTrash2 size={14} />
-//             </Button>
-//           </div>
-//         ),
-//       },
-//     ],
-//     []
-//   );
-
-//   const breadcrumbItems = [
-//     { title: "Dashboard", link: "/" },
-//     { title: "Sales", link: "#" },
-//   ];
-
-//   return (
-//     <div className="page-content">
-//       <Container fluid>
-//         <Breadcrumbs title="Sales" breadcrumbItems={breadcrumbItems} />
-//         <Card>
-//           <CardBody>
-//             {isLoading ? (
-//               <div className="text-center py-5">
-//                 <Spinner color="primary" />
-//               </div>
-//             ) : (
-//               <TableContainer
-//                 columns={columns}
-//                 data={sales}
-//                 isPagination={true}
-//                 iscustomPageSize={false}
-//                 isBordered={false}
-//                 customPageSize={pagination.pageSize}
-//                 pagination={{
-//                   pageIndex: pagination.pageIndex,
-//                   pageSize: pagination.pageSize,
-//                   totalRecords: pagination.totalRecords,
-//                 }}
-//                 onPageChange={handlePageChange}
-//                 onPageSizeChange={handlePageSizeChange}
-//                 className="custom-table"
-//               />
-//             )}
-//           </CardBody>
-//         </Card>
-//       </Container>
-//     </div>
-//   );
-// };
-
-// export default Sale;
-
-// import React, { useMemo, useEffect, useState, useCallback } from "react";
-// import { Container, Card, CardBody, Spinner, Button } from "reactstrap";
-// import { FiTrash2 } from "react-icons/fi";
-// import TableContainer from "../../components/Common/TableContainer";
-// import Breadcrumbs from "../../components/Common/Breadcrumb";
-// import {
-//   fetchSales,
-//   deleteSaleById,
-//   fetchSaleById,
-// } from "../../services/productService";
-// import { toast } from "react-toastify";
-// import { useNavigate } from "react-router-dom";
-// import { useSelector } from "react-redux";
-// import { hasAnyPermission, isAdmin } from "../../utils/permissions";
-
-// const Sale = () => {
-//   const [sales, setSales] = useState([]);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [pagination, setPagination] = useState({
-//     pageIndex: 1,
-//     pageSize: 10,
-//     totalRecords: 0,
-//   });
-
-//   const currentUser = useSelector((state) => state.Login?.user);
-
-//   const navigate = useNavigate();
-
-//   const getSales = useCallback(async () => {
-//     setIsLoading(true);
-//     try {
-//       if (!currentUser) {
-//         toast.error("User information not available");
-//         setSales([]);
-//         return;
-//       }
-
-//       let response;
-
-//       const hasGetAllPermission = hasAnyPermission(currentUser, [
-//         "PRODUCT_SALE_GET_ALL",
-//       ]);
-//       const hasGetByIdPermission = hasAnyPermission(currentUser, [
-//         "PRODUCT_SALE_GET_BY_ID",
-//       ]);
-
-//       if (isAdmin(currentUser) || hasGetAllPermission) {
-//         response = await fetchSales({
-//           page: pagination.pageIndex,
-//           limit: pagination.pageSize,
-//         });
-//       } else if (hasGetByIdPermission) {
-//         if (!currentUser.id) {
-//           throw new Error("User ID not available");
-//         }
-
-//         // Fetch sale by user ID
-//         response = await fetchSaleById(currentUser.id);
-
-//         // Handle case when no sale is found for this user
-//         if (!response) {
-//           toast.info("No sales found for your account");
-//           response = [];
-//         } else {
-//           // Convert to array for table compatibility
-//           response = [response];
-//         }
-//       } else {
-//         toast.error("You don't have permission to view sales");
-//         response = [];
-//       }
-
-//       const records = Array.isArray(response) ? response : [];
-//       setSales(records);
-//       setPagination((prev) => ({
-//         ...prev,
-//         totalRecords: records.length,
-//       }));
-//     } catch (error) {
-//       console.error("Failed to fetch sales:", error.message);
-//       toast.error(error.message);
-//       setSales([]);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [pagination.pageIndex, pagination.pageSize, currentUser]);
-//   useEffect(() => {
-//     getSales();
-//   }, [getSales]);
-
-//   const handlePageChange = (newPage) => {
-//     setPagination((prev) => ({ ...prev, pageIndex: newPage }));
-//   };
-
-//   const handlePageSizeChange = (newSize) => {
-//     setPagination((prev) => ({
-//       ...prev,
-//       pageSize: newSize,
-//       pageIndex: 1,
-//     }));
-//   };
-
-//   const handleDelete = async (id) => {
-//     if (!window.confirm("Are you sure you want to delete this sale?")) return;
-
-//     try {
-//       await deleteSaleById(id);
-//       toast.success("Sale deleted successfully");
-//       getSales(); // Refresh after delete
-//     } catch (error) {
-//       console.error("Delete error:", error.message);
-//       toast.error(`Failed to delete sale: ${error.message}`);
-//     }
-//   };
-
-//   const navigateToSale = (id) => {
-//     navigate(`/sale-details/${id}`);
-//   };
-//   const renderClickableCell = (row, value, formatter) => {
-//     return (
-//       <div
-//         style={{ cursor: "pointer" }}
-//         onClick={() => navigateToSale(row.original.id)}
-//       >
-//         {formatter ? formatter(value) : value || "N/A"}
-//       </div>
-//     );
-//   };
-
-//   const columns = useMemo(
-//     () => [
-//       {
-//         Header: "Product Type",
-//         accessor: "productType",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Price",
-//         accessor: "price",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(
-//             row,
-//             value,
-//             (v) => `$${parseFloat(v || 0).toFixed(2)}`
-//           ),
-//       },
-//       {
-//         Header: "Status",
-//         accessor: "status",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) => (
-//             <span
-//               className={`badge text-uppercase ${
-//                 v === "converted"
-//                   ? "bg-success"
-//                   : v === "pending"
-//                   ? "bg-warning"
-//                   : "bg-danger"
-//               }`}
-//             >
-//               {v}
-//             </span>
-//           )),
-//       },
-//       {
-//         Header: "Lead Campaign",
-//         accessor: "Lead.campaignName",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Created By",
-//         accessor: "User.firstname",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Conversion Date",
-//         accessor: "conversionDate",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) =>
-//             v ? new Date(v).toLocaleDateString() : "N/A"
-//           ),
-//       },
-//       {
-//         Header: "Action",
-//         disableFilters: true,
-//         Cell: ({ row }) => (
-//           <div className="d-flex gap-2">
-//             <Button
-//               color="danger"
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={(e) => {
-//                 e.stopPropagation(); // prevent row click
-//                 handleDelete(row.original.id);
-//               }}
-//               title="Delete"
-//             >
-//               <FiTrash2 size={14} />
-//             </Button>
-//           </div>
-//         ),
-//       },
-//     ],
-//     []
-//   );
-
-//   const breadcrumbItems = [
-//     { title: "Dashboard", link: "/" },
-//     { title: "Sales", link: "#" },
-//   ];
-
-//   return (
-//     <div className="page-content">
-//       <Container fluid>
-//         <Breadcrumbs title="Sales" breadcrumbItems={breadcrumbItems} />
-//         <Card>
-//           <CardBody>
-//             {isLoading ? (
-//               <div className="text-center py-5">
-//                 <Spinner color="primary" />
-//               </div>
-//             ) : (
-//               <TableContainer
-//                 columns={columns}
-//                 data={sales}
-//                 isPagination={true}
-//                 iscustomPageSize={false}
-//                 isBordered={false}
-//                 customPageSize={pagination.pageSize}
-//                 pagination={{
-//                   pageIndex: pagination.pageIndex,
-//                   pageSize: pagination.pageSize,
-//                   totalRecords: pagination.totalRecords,
-//                 }}
-//                 onPageChange={handlePageChange}
-//                 onPageSizeChange={handlePageSizeChange}
-//                 className="custom-table"
-//               />
-//             )}
-//           </CardBody>
-//         </Card>
-//       </Container>
-//     </div>
-//   );
-// };
-
-// export default Sale;
-
-// src/pages/Sales/index.js
-
-// import React, { useMemo, useEffect, useState, useCallback } from "react";
-// import { Container, Card, CardBody, Spinner, Button, Badge } from "reactstrap";
-// import { FiTrash2 } from "react-icons/fi";
-// import TableContainer from "../../components/Common/TableContainer";
-// import Breadcrumbs from "../../components/Common/Breadcrumb";
-// import { toast } from "react-toastify";
-// import { useNavigate } from "react-router-dom";
-// import { deleteSaleById, getAllSales } from "../../services/productService";
-// import { isAdmin } from "../../utils/permissions";
-
-// const Sale = () => {
-//   const [sales, setSales] = useState([]);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [pagination, setPagination] = useState({
-//     pageIndex: 1,
-//     pageSize: 10,
-//     totalRecords: 0,
-//   });
-//   const [isAdminUser, setIsAdminUser] = useState(false);
-
-//   const navigate = useNavigate();
-
-//   useEffect(() => {
-//     const user = JSON.parse(localStorage.getItem("authUser"));
-//     setIsAdminUser(isAdmin(user));
-//   }, []);
-
-//   const getSales = useCallback(async () => {
-//     setIsLoading(true);
-//     try {
-//       const response = await getAllSales({
-//         page: pagination.pageIndex,
-//         limit: pagination.pageSize,
-//       });
-
-//       console.log("Fetched sales data:", response);
-
-//       // Normalize the response data
-//       let records = [];
-//       if (Array.isArray(response)) {
-//         records = response;
-//       } else if (response && Array.isArray(response.data)) {
-//         records = response.data;
-//       } else if (response && response.success && Array.isArray(response.data)) {
-//         records = response.data;
-//       }
-
-//       setSales(records);
-//       setPagination((prev) => ({
-//         ...prev,
-//         totalRecords: records.length,
-//         // If API returns total count, use that instead:
-//         // totalRecords: response.totalCount || records.length,
-//       }));
-//     } catch (error) {
-//       console.error("Failed to fetch sales:", error.message);
-//       toast.error(`Failed to fetch sales: ${error.message}`);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [pagination.pageIndex, pagination.pageSize, isAdminUser]);
-
-//   useEffect(() => {
-//     getSales();
-//   }, [getSales]);
-
-//   const handlePageChange = (newPage) => {
-//     setPagination((prev) => ({ ...prev, pageIndex: newPage }));
-//   };
-
-//   const handlePageSizeChange = (newSize) => {
-//     setPagination((prev) => ({
-//       ...prev,
-//       pageSize: newSize,
-//       pageIndex: 1,
-//     }));
-//   };
-
-//   const handleDelete = async (id) => {
-//     if (!window.confirm("Are you sure you want to delete this sale?")) return;
-
-//     try {
-//       await deleteSaleById(id);
-//       toast.success("Sale deleted successfully");
-//       getSales(); // Refresh after delete
-//     } catch (error) {
-//       console.error("Delete error:", error.message);
-//       toast.error(`Failed to delete sale: ${error.message}`);
-//     }
-//   };
-
-//   const navigateToSale = (id) => {
-//     navigate(`/sale-details/${id}`);
-//   };
-
-//   const renderClickableCell = (row, value, formatter) => {
-//     return (
-//       <div
-//         style={{ cursor: "pointer" }}
-//         onClick={() => navigateToSale(row.original.id)}
-//       >
-//         {formatter ? formatter(value) : value || "N/A"}
-//       </div>
-//     );
-//   };
-
-//   const columns = useMemo(
-//     () => [
-//       {
-//         Header: "Product Type",
-//         accessor: "productType",
-//         disableFilters: true,
-//         Cell: ({ row, value }) => renderClickableCell(row, value),
-//       },
-//       {
-//         Header: "Price",
-//         accessor: "price",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(
-//             row,
-//             value,
-//             (v) => `$${parseFloat(v || 0).toFixed(2)}`
-//           ),
-//       },
-//       {
-//         Header: "Status",
-//         accessor: "status",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) => (
-//             <Badge
-//               className={`text-uppercase ${
-//                 v === "converted"
-//                   ? "bg-success"
-//                   : v === "pending"
-//                   ? "bg-warning"
-//                   : "bg-danger"
-//               }`}
-//             >
-//               {v}
-//             </Badge>
-//           )),
-//       },
-//       ...(isAdminUser
-//         ? [
-//             {
-//               Header: "Lead Campaign",
-//               accessor: "Lead.campaignName",
-//               disableFilters: true,
-//               Cell: ({ row, value }) => renderClickableCell(row, value),
-//             },
-//             {
-//               Header: "Created By",
-//               accessor: "User.firstname",
-//               disableFilters: true,
-//               Cell: ({ row, value }) => renderClickableCell(row, value),
-//             },
-//           ]
-//         : []),
-//       {
-//         Header: "Conversion Date",
-//         accessor: "conversionDate",
-//         disableFilters: true,
-//         Cell: ({ row, value }) =>
-//           renderClickableCell(row, value, (v) =>
-//             v ? new Date(v).toLocaleDateString() : "N/A"
-//           ),
-//       },
-//       {
-//         Header: "Action",
-//         disableFilters: true,
-//         Cell: ({ row }) => (
-//           <div className="d-flex gap-2">
-//             <Button
-//               color="danger"
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={(e) => {
-//                 e.stopPropagation();
-//                 handleDelete(row.original.id);
-//               }}
-//               title="Delete"
-//             >
-//               <FiTrash2 size={14} />
-//             </Button>
-//           </div>
-//         ),
-//       },
-//     ],
-//     [isAdminUser]
-//   );
-
-//   const breadcrumbItems = [
-//     { title: "Dashboard", link: "/" },
-//     { title: "Sales", link: "#" },
-//   ];
-
-//   return (
-//     <div className="page-content">
-//       <Container fluid>
-//         <Breadcrumbs title="Sales" breadcrumbItems={breadcrumbItems} />
-//         <Card>
-//           <CardBody>
-//             {isLoading ? (
-//               <div className="text-center py-5">
-//                 <Spinner color="primary" />
-//               </div>
-//             ) : (
-//               <TableContainer
-//                 columns={columns}
-//                 data={sales}
-//                 isPagination={true}
-//                 iscustomPageSize={false}
-//                 isBordered={false}
-//                 customPageSize={pagination.pageSize}
-//                 pagination={{
-//                   pageIndex: pagination.pageIndex,
-//                   pageSize: pagination.pageSize,
-//                   totalRecords: pagination.totalRecords,
-//                 }}
-//                 onPageChange={handlePageChange}
-//                 onPageSizeChange={handlePageSizeChange}
-//                 className="custom-table"
-//               />
-//             )}
-//           </CardBody>
-//         </Card>
-//       </Container>
-//     </div>
-//   );
-// };
-
-// export default Sale;
-
 import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   Container,
@@ -717,14 +15,17 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { deleteSaleById, getAllSales } from "../../services/productService";
 import { isAdmin } from "../../utils/permissions";
+import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 
 const Sale = () => {
+  const { confirmDelete } = useDeleteConfirmation();
   const [sales, setSales] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState({
-    pageIndex: 1,
+    currentPage: 1,
     pageSize: 10,
-    totalRecords: 0,
+    totalItems: 0,
+    totalPages: 1,
   });
   const [isAdminUser, setIsAdminUser] = useState(false);
 
@@ -739,24 +40,17 @@ const Sale = () => {
     setIsLoading(true);
     try {
       const response = await getAllSales({
-        page: pagination.pageIndex,
+        page: pagination.currentPage,
         limit: pagination.pageSize,
       });
 
-      console.log("Raw API response:", JSON.stringify(response, null, 2));
+      console.log("Raw API response:", response);
 
-      // Handle both direct array and object with data property
-      let records = [];
-      let totalItems = 0;
-      if (Array.isArray(response)) {
-        records = response;
-        totalItems = response.length;
-      } else if (response.data && Array.isArray(response.data)) {
-        records = response.data;
-        totalItems = response.totalItems || response.data.length;
-      } else {
-        throw new Error("Unexpected API response format");
-      }
+      // Handle the normalized response format
+      const records = response.data || [];
+      const totalItems = response.totalItems || 0;
+      const totalPages = response.totalPages || 1;
+      const currentPage = response.currentPage || 1;
 
       console.log(
         "Initial records:",
@@ -764,6 +58,7 @@ const Sale = () => {
         JSON.stringify(records, null, 2)
       );
 
+      // Process records (no filtering needed as backend handles it)
       const processedRecords = records.map((sale, index) => {
         let parsedProducts = null;
         let parsedLeadData = {
@@ -801,49 +96,55 @@ const Sale = () => {
         "Processed records:",
         JSON.stringify(processedRecords, null, 2)
       );
+
       setSales(processedRecords);
       setPagination((prev) => ({
         ...prev,
-        totalRecords: totalItems,
+        currentPage: currentPage, // Added currentPage update
+        totalItems: totalItems,
+        totalPages: totalPages, // Added totalPages update
       }));
     } catch (error) {
       console.error("Failed to fetch sales:", error.message);
       toast.error(`Failed to fetch sales: ${error.message}`);
       setSales([]);
+      setPagination({
+        currentPage: 1,
+        pageSize: 10,
+        totalItems: 0,
+        totalPages: 1,
+      });
     } finally {
       setIsLoading(false);
       console.log("isLoading set to:", false);
     }
-  }, [pagination.pageIndex, pagination.pageSize, isAdminUser]);
-
+  }, [pagination.currentPage, pagination.pageSize, isAdminUser]);
   useEffect(() => {
     getSales();
   }, [getSales]);
 
   const handlePageChange = (newPage) => {
-    setPagination((prev) => ({ ...prev, pageIndex: newPage }));
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
   };
 
   const handlePageSizeChange = (newSize) => {
     setPagination((prev) => ({
       ...prev,
       pageSize: newSize,
-      pageIndex: 1,
+      currentPage: 1,
     }));
   };
-
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this sale?")) return;
-    try {
-      await deleteSaleById(id);
-      toast.success("Sale deleted successfully");
-      getSales();
-    } catch (error) {
-      console.error("Delete error:", error.message);
-      toast.error(`Failed to delete sale: ${error.message}`);
-    }
+    await confirmDelete(
+      async () => {
+        await deleteSaleById(id);
+      },
+      async () => {
+        await getSales();
+      },
+      "sale"
+    );
   };
-
   const navigateToSale = (id) => {
     navigate(`/sale-details/${id}`);
   };
@@ -961,11 +262,7 @@ const Sale = () => {
           renderClickableCell(row, value, (v) => (
             <Badge
               className={`text-uppercase ${
-                v === "converted"
-                  ? "bg-success"
-                  : v === "pending"
-                  ? "bg-warning"
-                  : "bg-danger"
+                v === "converted" ? "bg-success" : "bg-secondary"
               }`}
             >
               {v || "N/A"}
@@ -1049,9 +346,7 @@ const Sale = () => {
             ) : sales.length === 0 ? (
               <div className="text-center py-5">
                 <h4>No sales data available</h4>
-                <p>
-                  Check back later or contact support if this is unexpected.
-                </p>
+                <p>No converted sales found. Check back later.</p>
               </div>
             ) : (
               <>
@@ -1062,11 +357,7 @@ const Sale = () => {
                   iscustomPageSize={false}
                   isBordered={false}
                   customPageSize={pagination.pageSize}
-                  pagination={{
-                    pageIndex: pagination.pageIndex,
-                    pageSize: pagination.pageSize,
-                    totalRecords: pagination.totalRecords,
-                  }}
+                  pagination={pagination}
                   onPageChange={handlePageChange}
                   onPageSizeChange={handlePageSizeChange}
                   className="custom-table"

@@ -2439,7 +2439,6 @@ import { FaTrash } from "react-icons/fa";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import logo from "../../assets/images/Picture2.png";
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import "jspdf-autotable";
 import { hasAnyPermission } from "../../utils/permissions";
 

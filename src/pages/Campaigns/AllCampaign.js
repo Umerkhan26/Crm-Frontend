@@ -389,6 +389,7 @@ import { deleteCampaign, fetchCampaigns } from "../../services/campaignService";
 import { FaTrash } from "react-icons/fa";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { useSelector } from "react-redux";
+import { hasAnyPermission } from "../../utils/permissions";
 
 const AllCampaigns = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -407,6 +408,10 @@ const AllCampaigns = () => {
     const storedUser = localStorage.getItem("authUser");
     return storedUser ? JSON.parse(storedUser) : null;
   });
+
+  const reduxPermissions = useSelector(
+    (state) => state.Permissions?.permissions
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -583,12 +588,14 @@ const AllCampaigns = () => {
             ) : (
               <>
                 <div className="d-flex justify-content-end mb-3">
-                  <Input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                  />
+                  <div style={{ width: "250px" }}>
+                    <Input
+                      type="text"
+                      placeholder="Search..."
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div className="table-responsive">
@@ -628,7 +635,7 @@ const AllCampaigns = () => {
                             <td style={{ fontSize: "12px" }}>
                               {formatColumns(row.parsedFields || [])}
                             </td>
-                            <td>
+                            {/* <td>
                               <Button
                                 color="primary"
                                 size="sm"
@@ -658,6 +665,82 @@ const AllCampaigns = () => {
                               >
                                 <FaTrash size={14} />
                               </Button>
+                            </td> */}
+
+                            <td>
+                              {(() => {
+                                const canUpdate =
+                                  (user?.id === row.createdBy &&
+                                    hasAnyPermission(
+                                      user,
+                                      ["campaign:updateById"],
+                                      reduxPermissions
+                                    )) ||
+                                  hasAnyPermission(
+                                    user,
+                                    ["campaign:update"],
+                                    reduxPermissions
+                                  );
+
+                                const canDelete =
+                                  (user?.id === row.createdBy &&
+                                    hasAnyPermission(
+                                      user,
+                                      ["campaign:deleteById"],
+                                      reduxPermissions
+                                    )) ||
+                                  hasAnyPermission(
+                                    user,
+                                    ["campaign:delete"],
+                                    reduxPermissions
+                                  );
+
+                                return (
+                                  <div className="d-flex">
+                                    {canUpdate && (
+                                      <Button
+                                        color="primary"
+                                        size="sm"
+                                        className="me-2"
+                                        onClick={() => {
+                                          console.log("Edit clicked for:", row);
+                                          console.log(
+                                            "row.isLinkedToOrder:",
+                                            row.isLinkedToOrder
+                                          );
+                                          if (!row.isLinkedToOrder) {
+                                            handleEdit(row);
+                                          }
+                                        }}
+                                        disabled={row.isLinkedToOrder}
+                                        title={
+                                          row.isLinkedToOrder
+                                            ? "Cannot edit: Linked to an order"
+                                            : "Edit"
+                                        }
+                                      >
+                                        <FiEdit2 size={14} />
+                                      </Button>
+                                    )}
+
+                                    {canDelete && (
+                                      <Button
+                                        color="danger"
+                                        size="sm"
+                                        onClick={() => handleDelete(row)}
+                                        disabled={row.isLinkedToOrder}
+                                        title={
+                                          row.isLinkedToOrder
+                                            ? "Cannot delete: Linked to an order"
+                                            : "Delete"
+                                        }
+                                      >
+                                        <FaTrash size={14} />
+                                      </Button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))

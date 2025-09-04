@@ -15,6 +15,10 @@
 //   Col,
 //   Button,
 //   Spinner,
+//   Dropdown,
+//   DropdownToggle,
+//   DropdownMenu,
+//   DropdownItem,
 // } from "reactstrap";
 // import { FiEdit2, FiFilter, FiTrash2 } from "react-icons/fi";
 // import { FaList, FaUserPlus, FaUserSlash } from "react-icons/fa";
@@ -30,7 +34,6 @@
 //   fetchLeadsByCampaign,
 // } from "../../services/leadService";
 // import { useNavigate } from "react-router-dom";
-// import { confirmAlert } from "react-confirm-alert";
 // import "react-confirm-alert/src/react-confirm-alert.css";
 // import LeadDetailModal from "../../components/Modals/LeadDetailModal";
 // import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
@@ -38,11 +41,29 @@
 // import { getAllUsers } from "../../services/auth";
 // import { toast } from "react-toastify";
 // import { fetchCampaigns } from "../../services/campaignService";
+// import Flatpickr from "react-flatpickr";
+// import "flatpickr/dist/themes/material_green.css";
+// import {
+//   startOfWeek,
+//   endOfWeek,
+//   startOfMonth,
+//   endOfMonth,
+//   isWithinInterval,
+//   subDays,
+//   parseISO,
+// } from "date-fns";
 
 // const MasterLead = () => {
 //   const navigate = useNavigate();
 //   const { confirmDelete } = useDeleteConfirmation();
 //   const [campaigns, setCampaigns] = useState([]);
+//   const [dateFilter, setDateFilter] = useState("all");
+//   const [customDateRange, setCustomDateRange] = useState({
+//     start: null,
+//     end: null,
+//   });
+//   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+
 //   const [state, setState] = useState({
 //     searchText: "",
 //     searchLoading: false,
@@ -74,6 +95,44 @@
 //     setState((prev) => ({ ...prev, ...newState }));
 //   };
 
+//   const filterLeadsByDate = (leads) => {
+//     if (dateFilter === "all") return leads;
+
+//     const now = new Date();
+//     let startDate, endDate;
+
+//     switch (dateFilter) {
+//       case "today":
+//         startDate = subDays(now, 1);
+//         endDate = now;
+//         break;
+//       case "weekend":
+//         startDate = startOfWeek(now);
+//         endDate = endOfWeek(now);
+//         break;
+//       case "month":
+//         startDate = startOfMonth(now);
+//         endDate = endOfMonth(now);
+//         break;
+//       case "custom":
+//         if (!customDateRange.start || !customDateRange.end) return leads;
+//         startDate = customDateRange.start;
+//         endDate = customDateRange.end;
+//         break;
+//       default:
+//         return leads;
+//     }
+
+//     return leads.filter((lead) => {
+//       const leadDate = lead.createdAt
+//         ? parseISO(lead.createdAt)
+//         : new Date(lead.updatedAt);
+//       return isWithinInterval(leadDate, { start: startDate, end: endDate });
+//     });
+//   };
+
+//   const toggleDateDropdown = () => setDateDropdownOpen((prev) => !prev);
+
 //   useEffect(() => {
 //     const loadCampaigns = async () => {
 //       try {
@@ -93,13 +152,36 @@
 //       updateState({ loading: true, searchLoading: true });
 
 //       let response;
+
+//       // 1. Handle campaign-specific fetch
 //       if (selectedCampaign) {
 //         response = await fetchLeadsByCampaign(selectedCampaign);
-//       } else if (activeFilter === "assigned") {
+//         console.log("Campaign leads response:", response); // Debugging
+
+//         // If no leads in this campaign, set empty state and exit early
+//         if (!response || !response.length) {
+//           updateState({
+//             leads: [],
+//             loading: false,
+//             searchLoading: false,
+//             pagination: {
+//               ...state.pagination,
+//               totalPages: 1,
+//               totalItems: 0,
+//               currentPage: 1,
+//             },
+//           });
+//           return;
+//         }
+//       }
+//       // 2. Handle assigned/unassigned filters
+//       else if (activeFilter === "assigned") {
 //         response = await fetchAllLeadsWithAssignee();
 //       } else if (activeFilter === "unassigned") {
 //         response = await fetchUnassignedLeads();
-//       } else {
+//       }
+//       // 3. Default: fetch all leads (with pagination & search)
+//       else {
 //         response = await fetchAllLeads(
 //           pagination.currentPage,
 //           pagination.pageSize,
@@ -107,7 +189,14 @@
 //         );
 //       }
 
-//       let filteredLeads = response.data || [];
+//       console.log("all leads", response);
+
+//       // Process fetched leads
+//       let filteredLeads = Array.isArray(response)
+//         ? response
+//         : response.data || [];
+
+//       // Apply search filter (if searchText exists)
 //       if (searchText) {
 //         filteredLeads = filteredLeads.filter((lead) =>
 //           Object.values(lead.leadData || {}).some((value) =>
@@ -116,15 +205,19 @@
 //         );
 //       }
 
+//       // Apply date filter
+//       filteredLeads = filterLeadsByDate(filteredLeads);
+
+//       // Map leads to consistent format
 //       const mappedLeads = filteredLeads.map((lead) => {
-//         // Parse leadData if it's a string
 //         const leadData =
 //           typeof lead.leadData === "string"
 //             ? JSON.parse(lead.leadData)
 //             : lead.leadData || {};
 
-//         // Check if lead has assignees
-//         const hasAssignees = lead.assignees && lead.assignees.length > 0;
+//         const assigneesArray = Array.isArray(lead.assignees)
+//           ? lead.assignees
+//           : [];
 
 //         return {
 //           ...lead,
@@ -134,15 +227,16 @@
 //           state: leadData.state || "",
 //           phoneNumber: leadData.phone_number || leadData.phoneNumber || "",
 //           agentName: leadData.agent_name || leadData.agentName || "",
-//           assignedTo: hasAssignees
-//             ? lead.assignees
+//           assignedTo: assigneesArray.length
+//             ? assigneesArray
 //                 .map((a) => `${a.firstname} ${a.lastname}`)
 //                 .join(", ")
 //             : "Unassigned",
-//           isAssigned: hasAssignees,
+//           isAssigned: assigneesArray.length > 0,
 //         };
 //       });
 
+//       // Update state with final leads
 //       updateState({
 //         leads: mappedLeads,
 //         loading: false,
@@ -155,7 +249,13 @@
 //         },
 //       });
 //     } catch (err) {
-//       updateState({ error: err.message, loading: false, searchLoading: false });
+//       updateState({
+//         error: err.message,
+//         loading: false,
+//         searchLoading: false,
+//         leads: [], // Fallback: clear table on error
+//       });
+//       console.error("Failed to fetch leads:", err);
 //     }
 //   }, [
 //     state.activeFilter,
@@ -163,6 +263,8 @@
 //     state.pagination.pageSize,
 //     state.searchText,
 //     state.selectedCampaign,
+//     dateFilter,
+//     customDateRange,
 //   ]);
 
 //   const debouncedFetchData = useMemo(
@@ -183,10 +285,16 @@
 //   useEffect(() => {
 //     const loadInitialData = async () => {
 //       try {
+//         console.log("Loading users...");
+
 //         const [stats, usersResponse] = await Promise.all([
 //           getAssignmentStats(),
 //           getAllUsers({ page: 1, limit: 100 }),
 //         ]);
+
+//         console.log("Users response:", usersResponse);
+//         console.log("Users data:", usersResponse.data);
+//         console.log("Users array:", usersResponse.data || []);
 
 //         updateState({
 //           assignmentStats: stats,
@@ -200,11 +308,15 @@
 //     loadInitialData();
 //   }, []);
 
+//   // const handleRowClick = (row) => {
+//   //   updateState({
+//   //     selectedLead: row.original,
+//   //     isModalOpen: true,
+//   //   });
+//   // };
+
 //   const handleRowClick = (row) => {
-//     updateState({
-//       selectedLead: row.original,
-//       isModalOpen: true,
-//     });
+//     navigate(`/master-leads/${row.original.id}`);
 //   };
 
 //   const handleSearchInput = (e) => {
@@ -544,11 +656,8 @@
 
 //   const {
 //     loading,
-//     error,
 //     searchLoading,
 //     searchText,
-//     startDate,
-//     endDate,
 //     activeFilter,
 //     showFilterModal,
 //     leads,
@@ -587,7 +696,6 @@
 //                 <Spinner color="primary" />
 //               </div>
 //             )}
-//             {error && <p className="text-danger">Error: {error}</p>}
 
 //             <Row className="mb-3">
 //               <Col md={12}>
@@ -661,34 +769,105 @@
 //                       activeFilter: "all",
 //                       selectedCampaign: "",
 //                     });
+//                     setDateFilter("all");
+//                     setCustomDateRange({ start: null, end: null });
 //                   }}
 //                 >
 //                   <MdFilterAltOff size={20} />
 //                 </Button>
 //               </Col>
-//               <Col md={3}>
-//                 <label htmlFor="startDate" className="form-label">
-//                   Start Date
-//                 </label>
-//                 <input
-//                   type="date"
-//                   className="form-control"
-//                   id="startDate"
-//                   value={startDate}
-//                   onChange={(e) => updateState({ startDate: e.target.value })}
-//                 />
-//               </Col>
-//               <Col md={3}>
-//                 <label htmlFor="endDate" className="form-label">
-//                   End Date
-//                 </label>
-//                 <input
-//                   type="date"
-//                   className="form-control"
-//                   id="endDate"
-//                   value={endDate}
-//                   onChange={(e) => updateState({ endDate: e.target.value })}
-//                 />
+
+//               {/* Date Filter Dropdown */}
+//               <Col md="auto">
+//                 <Dropdown
+//                   isOpen={dateDropdownOpen}
+//                   toggle={toggleDateDropdown}
+//                   className="me-2"
+//                 >
+//                   <DropdownToggle caret color="light">
+//                     {dateFilter === "today"
+//                       ? "Today"
+//                       : dateFilter === "weekend"
+//                       ? "This Week"
+//                       : dateFilter === "month"
+//                       ? "This Month"
+//                       : dateFilter === "custom"
+//                       ? "Custom Range"
+//                       : "All Dates"}
+//                   </DropdownToggle>
+//                   <DropdownMenu>
+//                     <DropdownItem onClick={() => setDateFilter("all")}>
+//                       All Dates
+//                     </DropdownItem>
+//                     <DropdownItem onClick={() => setDateFilter("today")}>
+//                       Today
+//                     </DropdownItem>
+//                     <DropdownItem onClick={() => setDateFilter("weekend")}>
+//                       This Week
+//                     </DropdownItem>
+//                     <DropdownItem onClick={() => setDateFilter("month")}>
+//                       This Month
+//                     </DropdownItem>
+//                     <DropdownItem onClick={() => setDateFilter("custom")}>
+//                       Custom Range
+//                     </DropdownItem>
+//                   </DropdownMenu>
+//                 </Dropdown>
+
+//                 {dateFilter === "custom" && (
+//                   <div className="d-flex align-items-center">
+//                     <div className="d-flex me-2">
+//                       <Flatpickr
+//                         value={customDateRange.start}
+//                         onChange={([date]) =>
+//                           setCustomDateRange((prev) => ({
+//                             ...prev,
+//                             start: date,
+//                           }))
+//                         }
+//                         options={{
+//                           dateFormat: "Y-m-d",
+//                           maxDate: customDateRange.end || new Date(),
+//                         }}
+//                         placeholder="Start Date"
+//                         className="form-control"
+//                         style={{
+//                           width: "120px",
+//                           marginTop: "10px",
+//                         }}
+//                       />
+//                       <span className="mx-2">to</span>
+//                       <Flatpickr
+//                         value={customDateRange.end}
+//                         onChange={([date]) =>
+//                           setCustomDateRange((prev) => ({ ...prev, end: date }))
+//                         }
+//                         options={{
+//                           dateFormat: "Y-m-d",
+//                           minDate: customDateRange.start,
+//                           maxDate: new Date(),
+//                         }}
+//                         placeholder="End Date"
+//                         className="form-control"
+//                         style={{
+//                           width: "120px",
+//                           marginTop: "10px",
+//                         }}
+//                       />
+//                     </div>
+//                     <Button
+//                       color="primary"
+//                       size="sm"
+//                       onClick={() => fetchData()}
+//                       style={{
+//                         width: "120px",
+//                         marginTop: "10px",
+//                       }}
+//                     >
+//                       Filter
+//                     </Button>
+//                   </div>
+//                 )}
 //               </Col>
 //             </Row>
 
@@ -849,7 +1028,6 @@ import {
 } from "../../services/leadService";
 import { useNavigate } from "react-router-dom";
 import "react-confirm-alert/src/react-confirm-alert.css";
-import LeadDetailModal from "../../components/Modals/LeadDetailModal";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { debounce } from "lodash";
 import { getAllUsers } from "../../services/auth";
@@ -887,8 +1065,6 @@ const MasterLead = () => {
     showFilterModal: false,
     leads: [],
     loading: true,
-    isModalOpen: false,
-    selectedLead: null,
     error: null,
     selectedAgent: "",
     selectedCampaign: "",
@@ -954,6 +1130,7 @@ const MasterLead = () => {
         setCampaigns(res.data || []);
       } catch (err) {
         console.error("Failed to load campaigns:", err.message);
+        toast.error("Failed to load campaigns");
       }
     };
 
@@ -963,16 +1140,12 @@ const MasterLead = () => {
   const fetchData = useCallback(async () => {
     try {
       const { activeFilter, pagination, searchText, selectedCampaign } = state;
-      updateState({ loading: true, searchLoading: true });
+      updateState({ loading: true, searchLoading: true, error: null });
 
       let response;
 
-      // 1. Handle campaign-specific fetch
       if (selectedCampaign) {
         response = await fetchLeadsByCampaign(selectedCampaign);
-        console.log("Campaign leads response:", response); // Debugging
-
-        // If no leads in this campaign, set empty state and exit early
         if (!response || !response.length) {
           updateState({
             leads: [],
@@ -987,15 +1160,12 @@ const MasterLead = () => {
           });
           return;
         }
-      }
-      // 2. Handle assigned/unassigned filters
-      else if (activeFilter === "assigned") {
+      } else if (activeFilter === "assigned") {
         response = await fetchAllLeadsWithAssignee();
+        console.log("assineee lead", response);
       } else if (activeFilter === "unassigned") {
         response = await fetchUnassignedLeads();
-      }
-      // 3. Default: fetch all leads (with pagination & search)
-      else {
+      } else {
         response = await fetchAllLeads(
           pagination.currentPage,
           pagination.pageSize,
@@ -1003,26 +1173,41 @@ const MasterLead = () => {
         );
       }
 
-      console.log("all leads", response);
-
-      // Process fetched leads
       let filteredLeads = Array.isArray(response)
         ? response
         : response.data || [];
 
-      // Apply search filter (if searchText exists)
+      // Validate that all leads have an ID
+      filteredLeads = filteredLeads.filter((lead) => {
+        if (!lead.id) {
+          console.warn("Lead missing ID:", lead);
+          return false;
+        }
+        return true;
+      });
+
+      const normalizeLeadData = (lead) => {
+        if (typeof lead.leadData === "string") {
+          try {
+            return JSON.parse(lead.leadData);
+          } catch {
+            return {};
+          }
+        }
+        return lead.leadData || {};
+      };
+
       if (searchText) {
-        filteredLeads = filteredLeads.filter((lead) =>
-          Object.values(lead.leadData || {}).some((value) =>
+        filteredLeads = filteredLeads.filter((lead) => {
+          const data = normalizeLeadData(lead);
+          return Object.values(data).some((value) =>
             String(value).toLowerCase().includes(searchText.toLowerCase())
-          )
-        );
+          );
+        });
       }
 
-      // Apply date filter
       filteredLeads = filterLeadsByDate(filteredLeads);
 
-      // Map leads to consistent format
       const mappedLeads = filteredLeads.map((lead) => {
         const leadData =
           typeof lead.leadData === "string"
@@ -1050,7 +1235,6 @@ const MasterLead = () => {
         };
       });
 
-      // Update state with final leads
       updateState({
         leads: mappedLeads,
         loading: false,
@@ -1064,12 +1248,12 @@ const MasterLead = () => {
       });
     } catch (err) {
       updateState({
-        error: err.message,
+        error: err.message || "Failed to fetch leads",
         loading: false,
         searchLoading: false,
-        leads: [], // Fallback: clear table on error
+        leads: [],
       });
-      console.error("Failed to fetch leads:", err);
+      toast.error(err.message || "Failed to fetch leads");
     }
   }, [
     state.activeFilter,
@@ -1110,6 +1294,7 @@ const MasterLead = () => {
         });
       } catch (err) {
         console.error("Error loading initial data:", err.message);
+        toast.error("Failed to load initial data");
       }
     };
 
@@ -1117,10 +1302,12 @@ const MasterLead = () => {
   }, []);
 
   const handleRowClick = (row) => {
-    updateState({
-      selectedLead: row.original,
-      isModalOpen: true,
-    });
+    if (!row.original.id) {
+      toast.error("Cannot view lead details: Lead ID is missing");
+      console.error("Invalid lead ID:", row.original);
+      return;
+    }
+    navigate(`/master-leads/${row.original.id}`);
   };
 
   const handleSearchInput = (e) => {
@@ -1131,6 +1318,10 @@ const MasterLead = () => {
   };
 
   const handleEdit = (lead) => {
+    if (!lead.id) {
+      toast.error("Cannot edit lead: Lead ID is missing");
+      return;
+    }
     navigate("/add-lead", {
       state: {
         editData: {
@@ -1142,11 +1333,16 @@ const MasterLead = () => {
   };
 
   const handleDelete = async (leadId) => {
+    if (!leadId) {
+      toast.error("Cannot delete lead: Lead ID is missing");
+      return;
+    }
     const deleteFn = async () => {
       await deleteLead(leadId);
       updateState({
         leads: state.leads.filter((lead) => lead.id !== leadId),
       });
+      toast.success("Lead deleted successfully");
     };
 
     confirmDelete(deleteFn, null, "lead");
@@ -1209,7 +1405,6 @@ const MasterLead = () => {
 
       updateState({ loading: true });
 
-      // Optimistically update the UI
       const updatedLeads = state.leads.map((lead) => {
         if (leadIds.includes(lead.id)) {
           return {
@@ -1229,14 +1424,11 @@ const MasterLead = () => {
         showAssignControls: false,
       });
 
-      // Then make the actual API calls
       for (const leadId of leadIds) {
         try {
-          const response = await assignLeadToUser(leadId, selectedAgent);
-          console.log("assignLeadToUser", response);
+          await assignLeadToUser(leadId, selectedAgent);
         } catch (error) {
           console.error(`Failed to assign lead ${leadId}:`, error);
-          // Revert the optimistic update if there's an error
           updateState({
             leads: state.leads.map((lead) =>
               lead.id === leadId
@@ -1244,12 +1436,11 @@ const MasterLead = () => {
                 : lead
             ),
           });
+          toast.error(`Failed to assign lead ${leadId}`);
         }
       }
 
       toast.success(`${leadIds.length} lead(s) assigned successfully!`);
-
-      // Final refresh to ensure data consistency
       await fetchData();
 
       updateState({
@@ -1264,24 +1455,12 @@ const MasterLead = () => {
   };
 
   const handlePageChange = (newPage) => {
-    if (
-      state.activeFilter === "assigned" ||
-      state.activeFilter === "unassigned" ||
-      state.selectedCampaign
-    )
-      return;
     updateState({
       pagination: { ...state.pagination, currentPage: newPage },
     });
   };
 
   const handlePageSizeChange = (newSize) => {
-    if (
-      state.activeFilter === "assigned" ||
-      state.activeFilter === "unassigned" ||
-      state.selectedCampaign
-    )
-      return;
     updateState({
       pagination: {
         ...state.pagination,
@@ -1465,13 +1644,12 @@ const MasterLead = () => {
     activeFilter,
     showFilterModal,
     leads,
-    isModalOpen,
-    selectedLead,
+    error,
+    selectedAgent,
+    selectedCampaign,
     assignmentStats,
     users,
     showAssignControls,
-    selectedAgent,
-    selectedCampaign,
     pagination,
   } = state;
 
@@ -1498,6 +1676,11 @@ const MasterLead = () => {
                 }}
               >
                 <Spinner color="primary" />
+              </div>
+            )}
+            {error && (
+              <div className="alert alert-danger" role="alert">
+                {error}
               </div>
             )}
 
@@ -1581,7 +1764,6 @@ const MasterLead = () => {
                 </Button>
               </Col>
 
-              {/* Date Filter Dropdown */}
               <Col md="auto">
                 <Dropdown
                   isOpen={dateDropdownOpen}
@@ -1767,7 +1949,8 @@ const MasterLead = () => {
             <TableContainer
               columns={columns}
               data={leads}
-              isPagination={activeFilter === "all" && !selectedCampaign}
+              // isPagination={activeFilter === "all" && !selectedCampaign}
+              isPagination={true}
               iscustomPageSize={false}
               isBordered={false}
               customPageSize={pagination.pageSize}
@@ -1783,11 +1966,6 @@ const MasterLead = () => {
       <LeadFilterModal
         isOpen={showFilterModal}
         toggle={() => updateState({ showFilterModal: false })}
-      />
-      <LeadDetailModal
-        isOpen={isModalOpen}
-        toggle={() => updateState({ isModalOpen: !isModalOpen })}
-        leadData={selectedLead}
       />
     </div>
   );

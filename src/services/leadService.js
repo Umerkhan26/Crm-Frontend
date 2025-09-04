@@ -230,6 +230,16 @@ export const fetchAllLeadsWithAssignee = async () => {
 
     const leads = result.data.map((lead) => {
       const parsedData = JSON.parse(lead.leadData);
+      const assigneesArray = (() => {
+        try {
+          return Array.isArray(lead.assignees)
+            ? lead.assignees
+            : JSON.parse(lead.assignees || "[]");
+        } catch {
+          return [];
+        }
+      })();
+
       return {
         id: lead.id,
         campaignName: lead.campaignName,
@@ -249,8 +259,12 @@ export const fetchAllLeadsWithAssignee = async () => {
         state: parsedData.state,
         date: parsedData.date,
         // Assignment status
-        isAssigned: !!lead.assigneeId,
-        assignedTo: lead.assignee ? lead.assignee.firstname : "Unassigned",
+        isAssigned: assigneesArray.length > 0,
+        assignedTo: assigneesArray.length
+          ? assigneesArray
+              .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+              .join(", ")
+          : "Unassigned",
       };
     });
 

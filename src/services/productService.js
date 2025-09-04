@@ -1,13 +1,13 @@
 import { API_URL } from "./auth";
 import { updateLeadStatus } from "./leadService";
 
-const handleResponse = async (response) => {
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Request failed");
-  }
-  return response.json();
-};
+// const handleResponse = async (response) => {
+//   if (!response.ok) {
+//     const error = await response.json();
+//     throw new Error(error.message || "Request failed");
+//   }
+//   return response.json();
+// };
 export const createProduct = async (payload) => {
   try {
     const token = localStorage.getItem("token");
@@ -34,15 +34,18 @@ export const createProduct = async (payload) => {
   }
 };
 
-export const fetchAllProducts = async () => {
+export const fetchAllProducts = async ({ page = 1, limit = 10 }) => {
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_URL}/getAll`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `${API_URL}/getAll?page=${page}&limit=${limit}&status=pending`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -50,9 +53,9 @@ export const fetchAllProducts = async () => {
     }
 
     const result = await response.json();
-    return result.data;
+    return result; // return full object (data, totalItems, totalPages, currentPage)
   } catch (error) {
-    throw new Error(error.message || "Network error while fetching products");
+    throw error.message || "Network error while fetching products";
   }
 };
 
@@ -185,7 +188,7 @@ export const deleteSaleById = async (id) => {
 export const updateProduct = async (id, payload) => {
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_URL}/update/${id}`, {
+    const response = await fetch(`${API_URL}/updateProduct/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -208,7 +211,7 @@ export const updateProduct = async (id, payload) => {
 export const deleteProduct = async (id) => {
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_URL}/delete/${id}`, {
+    const response = await fetch(`${API_URL}/deleteProduct/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -273,18 +276,21 @@ export const getAllSales = async (params = {}) => {
 
     let url;
     if (isAdminUser) {
-      // Admin gets all sales
       const queryParams = new URLSearchParams({
         page: params.page || 1,
         limit: params.limit || 10,
         search: params.search || "",
         productType: params.productType || "",
-        status: params.status || "",
+        status: "converted", // Filter converted on backend
       }).toString();
       url = `${API_URL}/getAllSales?${queryParams}`;
     } else {
-      // Non-admin gets only their assigned sales
-      url = `${API_URL}/getSalesByAssigneeId/${user.id}`;
+      const queryParams = new URLSearchParams({
+        page: params.page || 1,
+        limit: params.limit || 10,
+        status: "converted", // Filter converted on backend
+      }).toString();
+      url = `${API_URL}/getSalesByAssigneeId/${user.id}?${queryParams}`;
     }
 
     const response = await fetch(url, {
@@ -301,12 +307,13 @@ export const getAllSales = async (params = {}) => {
 
     const data = await response.json();
 
-    // Normalize response format to match what your table expects
-    if (isAdminUser) {
-      return data.data || data; // Adjust based on your API response format
-    } else {
-      return data.data || data; // Adjust based on your API response format
-    }
+    // Normalize response format
+    return {
+      data: data.data || data,
+      totalItems: data.totalItems || (Array.isArray(data) ? data.length : 0),
+      totalPages: data.totalPages || 1,
+      currentPage: data.currentPage || 1,
+    };
   } catch (error) {
     console.error("Error in fetchSales:", error);
     throw error;

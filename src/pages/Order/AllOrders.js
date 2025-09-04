@@ -37,16 +37,20 @@
 // import ImportLeadsModal from "../../components/Modals/ImportLeadsModal";
 // import ColumnMappingModal from "../../components/Modals/ColumnMappingModal";
 // import { useLocation, useNavigate } from "react-router-dom";
+// import Swal from "sweetalert2";
 // import {
 //   deleteOrder,
 //   fetchAllOrders,
 //   setOrderBlockStatus,
 //   fetchCampaigns,
+//   fetchOrdersByVendorId,
+//   fetchOrdersByClientId,
 // } from "../../services/orderService";
 // import { toast } from "react-toastify";
-// import Swal from "sweetalert2";
 // import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 // import { debounce } from "lodash";
+// import { useSelector } from "react-redux";
+// import { hasAnyPermission } from "../../utils/permissions";
 
 // const Allorders = () => {
 //   const navigate = useNavigate();
@@ -76,6 +80,50 @@
 //     pageSize: 10,
 //   });
 //   const searchInputRef = useRef(null);
+
+//   // Get user role and ID from localStorage (assuming stored after login)
+//   const user = JSON.parse(localStorage.getItem("authUser")) || {};
+//   const userRole = user.userrole || "admin"; // Default to admin if not found
+//   const userId = user.id;
+
+//   // Get permissions from Redux
+//   const currentUser = useSelector((state) => state.Login?.user);
+//   const reduxPermissions = useSelector(
+//     (state) => state.Permissions?.permissions
+//   );
+
+//   // Define permissions for order actions
+//   const canAddLead = hasAnyPermission(
+//     currentUser,
+//     ["order:addLead"],
+//     reduxPermissions
+//   );
+//   const canImportLeads = hasAnyPermission(
+//     currentUser,
+//     ["order:importLeads"],
+//     reduxPermissions
+//   );
+//   const canUpdateOrder = hasAnyPermission(
+//     currentUser,
+//     ["order:update"],
+//     reduxPermissions
+//   );
+//   const canBlockOrder = hasAnyPermission(
+//     currentUser,
+//     ["order:block"],
+//     reduxPermissions
+//   );
+//   const canDeleteOrder = hasAnyPermission(
+//     currentUser,
+//     ["order:delete"],
+//     reduxPermissions
+//   );
+
+//   // Check if Options column should be shown
+//   const showOptionsColumn = canAddLead || canImportLeads;
+
+//   // Check if Action column should be shown
+//   const showActionColumn = canUpdateOrder || canBlockOrder || canDeleteOrder;
 
 //   const toggleModal = (order = null) => {
 //     setSelectedOrder(order);
@@ -112,13 +160,26 @@
 //     }
 //   }, [location.search, campaignOptions]);
 
-//   // Debounced fetch function for orders
+//   // Debounced fetch function for orders, now dynamic based on user role
 //   const debouncedFetchOrders = debounce(async (page, limit, search) => {
 //     try {
 //       setLoading(true);
 //       setSearchLoading(true);
 
-//       const response = await fetchAllOrders(page, limit, search);
+//       let fetchFunction;
+
+//       if (userRole === "admin") {
+//         fetchFunction = fetchAllOrders;
+//       } else if (userRole === "vendor") {
+//         fetchFunction = (p, l, s) => fetchOrdersByVendorId(userId, p, l, s);
+//       } else if (userRole === "client") {
+//         fetchFunction = (p, l, s) => fetchOrdersByClientId(userId, p, l, s);
+//       } else {
+//         throw new Error("Unknown user role");
+//       }
+
+//       const response = await fetchFunction(page, limit, search);
+//       console.log("all order", response);
 //       setOrdersData(response.data);
 //       setPagination((prev) => ({
 //         ...prev,
@@ -142,7 +203,13 @@
 //       searchText
 //     );
 //     return () => debouncedFetchOrders.cancel();
-//   }, [pagination.currentPage, pagination.pageSize, searchText]);
+//   }, [
+//     pagination.currentPage,
+//     pagination.pageSize,
+//     searchText,
+//     userRole,
+//     userId,
+//   ]);
 
 //   const handleSearchInput = (e) => {
 //     setSearchText(e.target.value);
@@ -322,8 +389,8 @@
 //     );
 //   };
 
-//   const columns = useMemo(
-//     () => [
+//   const columns = useMemo(() => {
+//     const baseColumns = [
 //       {
 //         Header: "Order Id",
 //         accessor: "",
@@ -350,34 +417,6 @@
 //         ),
 //       },
 //       {
-//         Header: "Options",
-//         disableFilters: true,
-//         Cell: (cellProps) => (
-//           <ButtonGroup vertical className="w-100">
-//             <Button
-//               color="primary"
-//               size="sm"
-//               className="d-flex align-items-center justify-content-center text-nowrap mb-2"
-//               onClick={() => toggleModal(cellProps.row.original)}
-//             >
-//               <FaPlus className="me-1" /> Add Lead
-//             </Button>
-//             <Button
-//               color="success"
-//               size="sm"
-//               className="d-flex align-items-center justify-content-center text-nowrap"
-//               onClick={() => {
-//                 setSelectedOrder(cellProps.row.original);
-//                 toggleImportModal();
-//               }}
-//             >
-//               <FaFileImport className="me-1" /> Import
-//             </Button>
-//           </ButtonGroup>
-//         ),
-//         width: 200,
-//       },
-//       {
 //         Header: "Leads Requested",
 //         accessor: "lead_requested",
 //         disableFilters: true,
@@ -386,6 +425,12 @@
 //       {
 //         Header: "Remaining Leads",
 //         accessor: "remainingLeads",
+//         disableFilters: true,
+//         width: 20,
+//       },
+//       {
+//         Header: "State",
+//         accessor: "state",
 //         disableFilters: true,
 //         width: 20,
 //       },
@@ -421,48 +466,104 @@
 //         ),
 //         width: 100,
 //       },
-//       {
+//     ];
+
+//     // Add Options column only if user has any of the required permissions
+//     if (showOptionsColumn) {
+//       baseColumns.splice(2, 0, {
+//         Header: "Options",
+//         disableFilters: true,
+//         Cell: (cellProps) => (
+//           <ButtonGroup vertical className="w-100">
+//             {canAddLead && (
+//               <Button
+//                 color="primary"
+//                 size="sm"
+//                 className="d-flex align-items-center justify-content-center text-nowrap mb-2"
+//                 onClick={() => toggleModal(cellProps.row.original)}
+//               >
+//                 <FaPlus className="me-1" /> Add Lead
+//               </Button>
+//             )}
+//             {canImportLeads && (
+//               <Button
+//                 color="success"
+//                 size="sm"
+//                 className="d-flex align-items-center justify-content-center text-nowrap"
+//                 onClick={() => {
+//                   setSelectedOrder(cellProps.row.original);
+//                   toggleImportModal();
+//                 }}
+//               >
+//                 <FaFileImport className="me-1" /> Import
+//               </Button>
+//             )}
+//           </ButtonGroup>
+//         ),
+//         width: 200,
+//       });
+//     }
+
+//     // Add Action column only if user has any of the required permissions
+//     if (showActionColumn) {
+//       baseColumns.push({
 //         Header: "Action",
 //         disableFilters: true,
 //         Cell: ({ row }) => (
 //           <div className="d-flex gap-2">
-//             <Button
-//               color="primary"
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={() => handleEdit(row.original)}
-//             >
-//               <FiEdit2 size={14} />
-//             </Button>
-//             <Button
-//               color={row.original.is_blocked ? "danger" : "secondary"}
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={() =>
-//                 handleBlockUnblock(row.original.id, row.original.is_blocked)
-//               }
-//             >
-//               {row.original.is_blocked ? (
-//                 <FaLock size={14} />
-//               ) : (
-//                 <FaUnlock size={14} />
-//               )}
-//             </Button>
-//             <Button
-//               color="danger"
-//               size="sm"
-//               className="px-2 py-1"
-//               onClick={() => handleDelete(row.original.id)}
-//             >
-//               <FaTrash size={14} />
-//             </Button>
+//             {canUpdateOrder && (
+//               <Button
+//                 color="primary"
+//                 size="sm"
+//                 className="px-2 py-1"
+//                 onClick={() => handleEdit(row.original)}
+//               >
+//                 <FiEdit2 size={14} />
+//               </Button>
+//             )}
+//             {canBlockOrder && (
+//               <Button
+//                 color={row.original.is_blocked ? "danger" : "secondary"}
+//                 size="sm"
+//                 className="px-2 py-1"
+//                 onClick={() =>
+//                   handleBlockUnblock(row.original.id, row.original.is_blocked)
+//                 }
+//               >
+//                 {row.original.is_blocked ? (
+//                   <FaLock size={14} />
+//                 ) : (
+//                   <FaUnlock size={14} />
+//                 )}
+//               </Button>
+//             )}
+//             {canDeleteOrder && (
+//               <Button
+//                 color="danger"
+//                 size="sm"
+//                 className="px-2 py-1"
+//                 onClick={() => handleDelete(row.original.id)}
+//               >
+//                 <FaTrash size={14} />
+//               </Button>
+//             )}
 //           </div>
 //         ),
 //         width: 120,
-//       },
-//     ],
-//     [campaignOptions]
-//   );
+//       });
+//     }
+
+//     return baseColumns;
+//   }, [
+//     campaignOptions,
+//     canAddLead,
+//     canImportLeads,
+//     canUpdateOrder,
+//     canBlockOrder,
+//     canDeleteOrder,
+//     showOptionsColumn,
+//     showActionColumn,
+//   ]);
 
 //   const breadcrumbItems = [
 //     { title: "Dashboard", link: "/" },
@@ -669,36 +770,44 @@
 //           </Card>
 //         </Container>
 //       </div>
-//       <AddLeadModal
-//         isOpen={modalOpen}
-//         toggle={() => setModalOpen(!modalOpen)}
-//         onSubmit={handleLeadSubmit}
-//         selectedOrder={selectedOrder}
-//       />
-//       <ImportLeadsModal
-//         isOpen={importModalOpen}
-//         toggle={toggleImportModal}
-//         onFileUpload={handleFileUpload}
-//         onMapping={(file) => {
-//           setExcelFile(file);
-//           toggleImportModal();
-//           toggleMappingModal();
-//         }}
-//         selectedOrder={selectedOrder}
-//       />
-//       <ColumnMappingModal
-//         isOpen={mappingModalOpen}
-//         toggle={toggleMappingModal}
-//         onImport={handleMappingComplete}
-//         selectedOrder={selectedOrder}
-//         excelColumns={excelColumns}
-//         selectedFile={excelFile}
-//       />
+//       {canAddLead && (
+//         <AddLeadModal
+//           isOpen={modalOpen}
+//           toggle={() => setModalOpen(!modalOpen)}
+//           onSubmit={handleLeadSubmit}
+//           selectedOrder={selectedOrder}
+//         />
+//       )}
+//       {canImportLeads && (
+//         <>
+//           <ImportLeadsModal
+//             isOpen={importModalOpen}
+//             toggle={toggleImportModal}
+//             onFileUpload={handleFileUpload}
+//             onMapping={(file) => {
+//               setExcelFile(file);
+//               toggleImportModal();
+//               toggleMappingModal();
+//             }}
+//             selectedOrder={selectedOrder}
+//           />
+//           <ColumnMappingModal
+//             isOpen={mappingModalOpen}
+//             toggle={toggleMappingModal}
+//             onImport={handleMappingComplete}
+//             selectedOrder={selectedOrder}
+//             excelColumns={excelColumns}
+//             selectedFile={excelFile}
+//           />
+//         </>
+//       )}
 //     </React.Fragment>
 //   );
 // };
 
 // export default Allorders;
+
+// Updated Allorders component
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import TableContainer from "../../components/Common/TableContainer";
@@ -739,22 +848,25 @@ import AddLeadModal from "../../components/Modals/AddLeadModal";
 import ImportLeadsModal from "../../components/Modals/ImportLeadsModal";
 import ColumnMappingModal from "../../components/Modals/ColumnMappingModal";
 import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
   deleteOrder,
   fetchAllOrders,
   setOrderBlockStatus,
   fetchCampaigns,
-  fetchOrdersByVendorId, // New import
-  fetchOrdersByClientId, // New import
+  fetchOrdersByVendorId,
+  fetchOrdersByClientId,
+  fetchVendorsAndClients,
 } from "../../services/orderService";
 import { toast } from "react-toastify";
-import Swal from "sweetalert2";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { debounce } from "lodash";
+import { useSelector } from "react-redux";
+import { hasAnyPermission } from "../../utils/permissions";
 
 const Allorders = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { search } = useLocation();
   const [excelColumns, setExcelColumns] = useState([]);
   const [excelFile, setExcelFile] = useState(null);
   const { confirmDelete } = useDeleteConfirmation();
@@ -769,10 +881,13 @@ const Allorders = () => {
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [ordersData, setOrdersData] = useState([]);
   const [campaignOptions, setCampaignOptions] = useState([]);
+  const [filteredCampaignOptions, setFilteredCampaignOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchText, setSearchText] = useState("");
+  const [vendors, setVendors] = useState([]);
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -785,6 +900,51 @@ const Allorders = () => {
   const user = JSON.parse(localStorage.getItem("authUser")) || {};
   const userRole = user.userrole || "admin"; // Default to admin if not found
   const userId = user.id;
+
+  // Get permissions from Redux
+  const currentUser = useSelector((state) => state.Login?.user);
+  const reduxPermissions = useSelector(
+    (state) => state.Permissions?.permissions
+  );
+
+  // Define permissions for order actions
+  const canAddLead = hasAnyPermission(
+    currentUser,
+    ["order:addLead"],
+    reduxPermissions
+  );
+  const canImportLeads = hasAnyPermission(
+    currentUser,
+    ["order:importLeads"],
+    reduxPermissions
+  );
+  const canUpdateOrder = hasAnyPermission(
+    currentUser,
+    ["order:update"],
+    reduxPermissions
+  );
+  const canBlockOrder = hasAnyPermission(
+    currentUser,
+    ["order:block"],
+    reduxPermissions
+  );
+  const canDeleteOrder = hasAnyPermission(
+    currentUser,
+    ["order:delete"],
+    reduxPermissions
+  );
+
+  // Check if Options column should be shown
+  const showOptionsColumn = canAddLead || canImportLeads;
+
+  // Check if Action column should be shown
+  const showActionColumn = canUpdateOrder || canBlockOrder || canDeleteOrder;
+
+  // Parse query params for filtering
+  const queryParams = new URLSearchParams(search);
+  const filterUserId = queryParams.get("filterUserId");
+  const filterRole = queryParams.get("filterRole");
+  const campaignNameParam = queryParams.get("campaign");
 
   const toggleModal = (order = null) => {
     setSelectedOrder(order);
@@ -810,35 +970,59 @@ const Allorders = () => {
   }, []);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const campaignId = queryParams.get("campaign");
-
-    if (!campaignId) {
-      setSelectedCampaign("Choose Campaign...");
+    if (
+      campaignNameParam &&
+      userRole === "admin" &&
+      filterUserId &&
+      filterRole
+    ) {
+      const selectedCampaignOption = campaignOptions.find(
+        (c) => c.label === campaignNameParam
+      );
+      if (selectedCampaignOption) {
+        setFilteredCampaignOptions([selectedCampaignOption]);
+        setSelectedCampaign(campaignNameParam);
+      } else {
+        setFilteredCampaignOptions([]);
+        setSelectedCampaign("Choose Campaign...");
+      }
     } else {
-      const campaign = campaignOptions.find((c) => c.value == campaignId);
-      setSelectedCampaign(campaign ? campaign.label : "Choose Campaign...");
+      setFilteredCampaignOptions(campaignOptions);
+      setSelectedCampaign(campaignNameParam || "Choose Campaign...");
     }
-  }, [location.search, campaignOptions]);
+  }, [campaignNameParam, campaignOptions, userRole, filterUserId, filterRole]);
 
-  // Debounced fetch function for orders, now dynamic based on user role
   const debouncedFetchOrders = debounce(async (page, limit, search) => {
     try {
       setLoading(true);
       setSearchLoading(true);
 
       let fetchFunction;
-      if (userRole === "admin") {
-        fetchFunction = fetchAllOrders;
-      } else if (userRole === "vendor") {
-        fetchFunction = (p, l, s) => fetchOrdersByVendorId(userId, p, l, s);
-      } else if (userRole === "client") {
-        fetchFunction = (p, l, s) => fetchOrdersByClientId(userId, p, l, s);
+
+      if (filterUserId && filterRole) {
+        if (filterRole === "vendor") {
+          fetchFunction = (p, l, s) =>
+            fetchOrdersByVendorId(parseInt(filterUserId), p, l, s);
+        } else if (filterRole === "client") {
+          fetchFunction = (p, l, s) =>
+            fetchOrdersByClientId(parseInt(filterUserId), p, l, s);
+        } else {
+          fetchFunction = fetchAllOrders;
+        }
       } else {
-        throw new Error("Unknown user role");
+        if (userRole === "admin") {
+          fetchFunction = fetchAllOrders;
+        } else if (userRole === "vendor") {
+          fetchFunction = (p, l, s) => fetchOrdersByVendorId(userId, p, l, s);
+        } else if (userRole === "client") {
+          fetchFunction = (p, l, s) => fetchOrdersByClientId(userId, p, l, s);
+        } else {
+          throw new Error("Unknown user role");
+        }
       }
 
       const response = await fetchFunction(page, limit, search);
+      console.log("all order", response);
       setOrdersData(response.data);
       setPagination((prev) => ({
         ...prev,
@@ -868,6 +1052,8 @@ const Allorders = () => {
     searchText,
     userRole,
     userId,
+    filterUserId,
+    filterRole,
   ]);
 
   const handleSearchInput = (e) => {
@@ -997,7 +1183,6 @@ const Allorders = () => {
   const filteredOrders = useMemo(() => {
     let filtered = Array.isArray(ordersData) ? ordersData : [];
 
-    // Filter by selected campaign
     if (selectedCampaign !== "Choose Campaign...") {
       const campaign = campaignOptions.find(
         (c) => c.label === selectedCampaign
@@ -1006,6 +1191,23 @@ const Allorders = () => {
         filtered = filtered.filter(
           (order) => order.campaign_id == campaign.value
         );
+      }
+    }
+
+    // ✅ Filter by selected vendor
+    if (selectedVendor !== "Choose Vendor...") {
+      const selectedVendorObj = vendors.find(
+        (v) => `${v.firstname} ${v.lastname}` === selectedVendor
+      );
+      if (selectedVendorObj) {
+        filtered = filtered.filter((order) => {
+          try {
+            const vendorData = JSON.parse(order.assign_to_vendor || "{}");
+            return vendorData.id === selectedVendorObj.id;
+          } catch (e) {
+            return false;
+          }
+        });
       }
     }
 
@@ -1030,9 +1232,38 @@ const Allorders = () => {
       const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
       return dateA - dateB;
     });
-  }, [ordersData, activeFilter, selectedCampaign, campaignOptions]);
+  }, [
+    ordersData,
+    activeFilter,
+    selectedCampaign,
+    selectedVendor,
+    campaignOptions,
+    vendors,
+  ]);
 
-  const vendors = ["Vendor2 Secok", "Junaid Tariq"];
+  useEffect(() => {
+    const loadVendors = async () => {
+      try {
+        const response = await fetchVendorsAndClients();
+        if (response.success && Array.isArray(response.data)) {
+          // filter only vendors
+          const vendorList = response.data.filter(
+            (u) => u.userrole === "vendor"
+          );
+          setVendors(vendorList);
+        }
+      } catch (error) {
+        console.error("Failed to load vendors:", error);
+      }
+    };
+    loadVendors();
+  }, []);
+
+  useEffect(() => {
+    if (ordersData?.length) {
+      console.log("🔍 Sample Order:", ordersData[0]);
+    }
+  }, [ordersData]);
 
   const handleLeadSubmit = (leadResponse) => {
     const orderId = leadResponse.order_id;
@@ -1048,8 +1279,8 @@ const Allorders = () => {
     );
   };
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         Header: "Order Id",
         accessor: "",
@@ -1075,35 +1306,6 @@ const Allorders = () => {
           </div>
         ),
       },
-
-      {
-        Header: "Options",
-        disableFilters: true,
-        Cell: (cellProps) => (
-          <ButtonGroup vertical className="w-100">
-            <Button
-              color="primary"
-              size="sm"
-              className="d-flex align-items-center justify-content-center text-nowrap mb-2"
-              onClick={() => toggleModal(cellProps.row.original)}
-            >
-              <FaPlus className="me-1" /> Add Lead
-            </Button>
-            <Button
-              color="success"
-              size="sm"
-              className="d-flex align-items-center justify-content-center text-nowrap"
-              onClick={() => {
-                setSelectedOrder(cellProps.row.original);
-                toggleImportModal();
-              }}
-            >
-              <FaFileImport className="me-1" /> Import
-            </Button>
-          </ButtonGroup>
-        ),
-        width: 200,
-      },
       {
         Header: "Leads Requested",
         accessor: "lead_requested",
@@ -1113,6 +1315,12 @@ const Allorders = () => {
       {
         Header: "Remaining Leads",
         accessor: "remainingLeads",
+        disableFilters: true,
+        width: 20,
+      },
+      {
+        Header: "State",
+        accessor: "state",
         disableFilters: true,
         width: 20,
       },
@@ -1137,7 +1345,6 @@ const Allorders = () => {
         disableFilters: true,
         width: 60,
       },
-
       {
         Header: "Status",
         accessor: "is_blocked",
@@ -1149,48 +1356,104 @@ const Allorders = () => {
         ),
         width: 100,
       },
-      {
+    ];
+
+    // Add Options column only if user has any of the required permissions
+    if (showOptionsColumn) {
+      baseColumns.splice(2, 0, {
+        Header: "Options",
+        disableFilters: true,
+        Cell: (cellProps) => (
+          <ButtonGroup vertical className="w-100">
+            {canAddLead && (
+              <Button
+                color="primary"
+                size="sm"
+                className="d-flex align-items-center justify-content-center text-nowrap mb-2"
+                onClick={() => toggleModal(cellProps.row.original)}
+              >
+                <FaPlus className="me-1" /> Add Lead
+              </Button>
+            )}
+            {canImportLeads && (
+              <Button
+                color="success"
+                size="sm"
+                className="d-flex align-items-center justify-content-center text-nowrap"
+                onClick={() => {
+                  setSelectedOrder(cellProps.row.original);
+                  toggleImportModal();
+                }}
+              >
+                <FaFileImport className="me-1" /> Import
+              </Button>
+            )}
+          </ButtonGroup>
+        ),
+        width: 200,
+      });
+    }
+
+    // Add Action column only if user has any of the required permissions
+    if (showActionColumn) {
+      baseColumns.push({
         Header: "Action",
         disableFilters: true,
         Cell: ({ row }) => (
           <div className="d-flex gap-2">
-            <Button
-              color="primary"
-              size="sm"
-              className="px-2 py-1"
-              onClick={() => handleEdit(row.original)}
-            >
-              <FiEdit2 size={14} />
-            </Button>
-            <Button
-              color={row.original.is_blocked ? "danger" : "secondary"}
-              size="sm"
-              className="px-2 py-1"
-              onClick={() =>
-                handleBlockUnblock(row.original.id, row.original.is_blocked)
-              }
-            >
-              {row.original.is_blocked ? (
-                <FaLock size={14} />
-              ) : (
-                <FaUnlock size={14} />
-              )}
-            </Button>
-            <Button
-              color="danger"
-              size="sm"
-              className="px-2 py-1"
-              onClick={() => handleDelete(row.original.id)}
-            >
-              <FaTrash size={14} />
-            </Button>
+            {canUpdateOrder && (
+              <Button
+                color="primary"
+                size="sm"
+                className="px-2 py-1"
+                onClick={() => handleEdit(row.original)}
+              >
+                <FiEdit2 size={14} />
+              </Button>
+            )}
+            {canBlockOrder && (
+              <Button
+                color={row.original.is_blocked ? "danger" : "secondary"}
+                size="sm"
+                className="px-2 py-1"
+                onClick={() =>
+                  handleBlockUnblock(row.original.id, row.original.is_blocked)
+                }
+              >
+                {row.original.is_blocked ? (
+                  <FaLock size={14} />
+                ) : (
+                  <FaUnlock size={14} />
+                )}
+              </Button>
+            )}
+            {canDeleteOrder && (
+              <Button
+                color="danger"
+                size="sm"
+                className="px-2 py-1"
+                onClick={() => handleDelete(row.original.id)}
+              >
+                <FaTrash size={14} />
+              </Button>
+            )}
           </div>
         ),
         width: 120,
-      },
-    ],
-    [campaignOptions]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    campaignOptions,
+    canAddLead,
+    canImportLeads,
+    canUpdateOrder,
+    canBlockOrder,
+    canDeleteOrder,
+    showOptionsColumn,
+    showActionColumn,
+  ]);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/" },
@@ -1290,16 +1553,18 @@ const Allorders = () => {
                         <FaFilter className="me-2" />
                         Select Campaign
                       </DropdownItem>
-                      <DropdownItem
-                        onClick={() =>
-                          setSelectedCampaign("Choose Campaign...")
-                        }
-                        active={selectedCampaign === "Choose Campaign..."}
-                        className="d-flex align-items-center"
-                      >
-                        Choose Campaign...
-                      </DropdownItem>
-                      {campaignOptions.map((campaign, index) => (
+                      {filteredCampaignOptions.length > 1 && (
+                        <DropdownItem
+                          onClick={() =>
+                            setSelectedCampaign("Choose Campaign...")
+                          }
+                          active={selectedCampaign === "Choose Campaign..."}
+                          className="d-flex align-items-center"
+                        >
+                          Choose Campaign...
+                        </DropdownItem>
+                      )}
+                      {filteredCampaignOptions.map((campaign, index) => (
                         <DropdownItem
                           key={index}
                           onClick={() => setSelectedCampaign(campaign.label)}
@@ -1342,21 +1607,36 @@ const Allorders = () => {
                         <FaFilter className="me-2" />
                         Select Vendor
                       </DropdownItem>
-                      {vendors.map((vendor, index) => (
+
+                      <DropdownItem
+                        onClick={() => setSelectedVendor("Choose Vendor...")}
+                        active={selectedVendor === "Choose Vendor..."}
+                        className="d-flex align-items-center"
+                      >
+                        <FaUserTag className="me-2" />
+                        Choose Vendor...
+                      </DropdownItem>
+                      {vendors.map((vendor) => (
                         <DropdownItem
-                          key={index}
-                          onClick={() => setSelectedVendor(vendor)}
-                          active={selectedVendor === vendor}
+                          key={vendor.id}
+                          onClick={() => {
+                            setSelectedVendor(
+                              `${vendor.firstname} ${vendor.lastname}`
+                            );
+                          }}
+                          active={
+                            selectedVendor ===
+                            `${vendor.firstname} ${vendor.lastname}`
+                          }
                           className="d-flex align-items-center"
                         >
                           <FaUserTag className="me-2" />
-                          {vendor}
+                          {vendor.firstname} {vendor.lastname}
                         </DropdownItem>
                       ))}
                     </DropdownMenu>
                   </Dropdown>
                 </Col>
-
                 <Col md={3}>
                   <div className="position-relative">
                     <Input
@@ -1397,31 +1677,37 @@ const Allorders = () => {
           </Card>
         </Container>
       </div>
-      <AddLeadModal
-        isOpen={modalOpen}
-        toggle={() => setModalOpen(!modalOpen)}
-        onSubmit={handleLeadSubmit}
-        selectedOrder={selectedOrder}
-      />
-      <ImportLeadsModal
-        isOpen={importModalOpen}
-        toggle={toggleImportModal}
-        onFileUpload={handleFileUpload}
-        onMapping={(file) => {
-          setExcelFile(file);
-          toggleImportModal();
-          toggleMappingModal();
-        }}
-        selectedOrder={selectedOrder}
-      />
-      <ColumnMappingModal
-        isOpen={mappingModalOpen}
-        toggle={toggleMappingModal}
-        onImport={handleMappingComplete}
-        selectedOrder={selectedOrder}
-        excelColumns={excelColumns}
-        selectedFile={excelFile}
-      />
+      {canAddLead && (
+        <AddLeadModal
+          isOpen={modalOpen}
+          toggle={() => setModalOpen(!modalOpen)}
+          onSubmit={handleLeadSubmit}
+          selectedOrder={selectedOrder}
+        />
+      )}
+      {canImportLeads && (
+        <>
+          <ImportLeadsModal
+            isOpen={importModalOpen}
+            toggle={toggleImportModal}
+            onFileUpload={handleFileUpload}
+            onMapping={(file) => {
+              setExcelFile(file);
+              toggleImportModal();
+              toggleMappingModal();
+            }}
+            selectedOrder={selectedOrder}
+          />
+          <ColumnMappingModal
+            isOpen={mappingModalOpen}
+            toggle={toggleMappingModal}
+            onImport={handleMappingComplete}
+            selectedOrder={selectedOrder}
+            excelColumns={excelColumns}
+            selectedFile={excelFile}
+          />
+        </>
+      )}
     </React.Fragment>
   );
 };

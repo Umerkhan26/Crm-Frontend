@@ -10,8 +10,8 @@ export const getMenuItems = (user) => {
   // In your getMenuItems function, before filtering
   console.log("User permissions:", permissions);
   console.log(
-    "Checking for lead:getByAssignee:",
-    hasAnyPermission(user, ["lead:getByAssignee"], isAdminUser)
+    "Checking for assignedLead:getByAssignee:",
+    hasAnyPermission(user, ["assignedLead:getByAssignee"], isAdminUser)
   );
 
   const menuItems = [
@@ -129,7 +129,7 @@ export const getMenuItems = (user) => {
         {
           title: "Assigned Leads",
           path: "/assigned-leads",
-          requiredPermissions: ["lead:getByAssignee"],
+          requiredPermissions: ["assignedLead:getByAssignee"],
         },
         {
           title: "Add Leads",

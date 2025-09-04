@@ -644,14 +644,26 @@ const NewOrder = () => {
   }, 500);
 
   useEffect(() => {
-    if (editData && campaignOptions.length > 0) {
-      // Parse vendor and client from JSON strings if they exist
-      const vendor = editData.assign_to_vendor
+    if (
+      editData &&
+      campaignOptions.length > 0 &&
+      vendorOptions.length > 0 &&
+      clientOptions.length > 0
+    ) {
+      // Parse assign_to_vendor and assign_to_client if they are JSON strings
+      const parsedVendor = editData.assign_to_vendor
         ? JSON.parse(editData.assign_to_vendor)
         : null;
-
-      const client = editData.assign_to_client
+      const parsedClient = editData.assign_to_client
         ? JSON.parse(editData.assign_to_client)
+        : null;
+
+      // Map to the corresponding options
+      const vendor = parsedVendor
+        ? vendorOptions.find((opt) => opt.value === parsedVendor.id)
+        : null;
+      const client = parsedClient
+        ? clientOptions.find((opt) => opt.value === parsedClient.id)
         : null;
 
       setFormData({
@@ -672,14 +684,11 @@ const NewOrder = () => {
         order_datetime: editData.order_datetime
           ? editData.order_datetime.split("T")[0]
           : "",
-        // Set vendor and client if they exist
-        vendor: vendor ? { value: vendor.id, label: vendor.name } : null,
-        assignedClient: client
-          ? { value: client.id, label: client.name }
-          : null,
+        vendor: vendor,
+        assignedClient: client,
       });
     }
-  }, [editData, campaignOptions]);
+  }, [editData, campaignOptions, vendorOptions, clientOptions]);
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({
@@ -744,16 +753,17 @@ const NewOrder = () => {
       area_to_use: formData.areaToUse || undefined,
       order_datetime: new Date(formData.order_datetime).toISOString(),
       assign_to_client: formData.assignedClient
-        ? JSON.stringify({
+        ? {
             id: formData.assignedClient.value,
             name: formData.assignedClient.label,
-          })
+          }
         : null,
+
       assign_to_vendor: formData.vendor
-        ? JSON.stringify({
+        ? {
             id: formData.vendor.value,
             name: formData.vendor.label,
-          })
+          }
         : null,
     };
 
@@ -866,6 +876,7 @@ const NewOrder = () => {
                           isLoading={isLoadingVendors}
                           placeholder="Select Vendor"
                           isSearchable
+                          isClearable
                           noOptionsMessage={() => "No vendors found"}
                           getOptionLabel={(option) => option.label}
                           getOptionValue={(option) => option.value}
@@ -886,6 +897,7 @@ const NewOrder = () => {
                           isLoading={isLoadingClients}
                           placeholder="Select Client"
                           isSearchable
+                          isClearable
                           noOptionsMessage={() => "No clients found"}
                           getOptionLabel={(option) => option.label}
                           getOptionValue={(option) => option.value}

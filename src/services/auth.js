@@ -29,14 +29,11 @@ export const updateUserById = async (id, payload, token) => {
   });
 
   const result = await response.json();
-
   if (!response.ok) {
     throw new Error(result.message || "Failed to update user");
   }
-
   return result;
 };
-
 export const getAllUsers = async ({ page = 1, limit = 10, search = "" }) => {
   try {
     const token = localStorage.getItem("token");

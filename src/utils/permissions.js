@@ -166,8 +166,8 @@ export const getMenuItems = (user) => {
   // In your getMenuItems function, before filtering
   console.log("User permissions:", permissions);
   console.log(
-    "Checking for lead:getByAssignee:",
-    hasAnyPermission(user, ["lead:getByAssignee"], isAdminUser)
+    "Checking for assigngetByAssigneeedLead::",
+    hasAnyPermission(user, ["assignedLead:getByAssignee"], isAdminUser)
   );
 
   const menuItems = [
@@ -177,12 +177,12 @@ export const getMenuItems = (user) => {
       path: "/dashboard",
       requiredPermissions: [],
     },
-    {
-      title: "Chat",
-      icon: "ri-chat-1-line",
-      path: "/chat",
-      requiredPermissions: [],
-    },
+    // {
+    //   title: "Chat",
+    //   icon: "ri-chat-1-line",
+    //   path: "/chat",
+    //   requiredPermissions: [],
+    // },
     // Role section - only for admin
     ...(isAdminUser
       ? [
@@ -285,7 +285,7 @@ export const getMenuItems = (user) => {
         {
           title: "Assigned Leads",
           path: "/assigned-leads",
-          requiredPermissions: ["lead:getByAssignee"],
+          requiredPermissions: ["assignedLead:getByAssignee"],
         },
         {
           title: "Add Leads",
@@ -323,57 +323,79 @@ export const getMenuItems = (user) => {
       requiredPermissions: [],
     },
     // Referrals section
-    {
-      title: "Referrals",
-      icon: "ri-group-line",
-      subItems: [
-        {
-          title: "Send Referral",
-          path: "#",
-          modal: true,
-          requiredPermissions: [],
-        },
-        {
-          title: "My Referrals",
-          path: "/all-referral",
-          requiredPermissions: [],
-        },
-      ],
-      requiredPermissions: [],
-    },
+    ...(isAdminUser
+      ? [
+          {
+            title: "Referrals",
+            icon: "ri-group-line",
+            subItems: [
+              {
+                title: "Send Referral",
+                path: "#",
+                modal: true,
+                requiredPermissions: [],
+              },
+              {
+                title: "My Referrals",
+                path: "/all-referral",
+                requiredPermissions: [],
+              },
+            ],
+            requiredPermissions: [],
+          },
+        ]
+      : []),
+
     // Settings section
-    {
-      title: "Settings",
-      icon: "ri-settings-3-line",
-      subItems: [
-        {
-          title: "Email Template",
-          path: "/allEmail",
-          requiredPermissions: [],
-        },
-        {
-          title: "Email Action",
-          path: "/email-action",
-          requiredPermissions: [],
-        },
-        {
-          title: "Notification",
-          path: "/all-notifications",
-          requiredPermissions: [],
-        },
-        {
-          title: "Activity Logs",
-          path: "/all-activities",
-          requiredPermissions: [],
-        },
-        {
-          title: "System Settings",
-          path: "/settings",
-          requiredPermissions: [],
-        },
-      ],
-      requiredPermissions: [],
-    },
+    ...(isAdminUser
+      ? [
+          {
+            title: "Settings",
+            icon: "ri-settings-3-line",
+            subItems: [
+              {
+                title: "Email Template",
+                path: "/allEmail",
+                requiredPermissions: [],
+              },
+              {
+                title: "Email Action",
+                path: "/email-action",
+                requiredPermissions: [],
+              },
+              {
+                title: "Notification",
+                path: "/all-notifications",
+                requiredPermissions: [],
+              },
+              {
+                title: "Activity Logs",
+                path: "/all-activities",
+                requiredPermissions: [],
+              }, // admin also sees
+              {
+                title: "System Settings",
+                path: "/settings",
+                requiredPermissions: [],
+              },
+            ],
+            requiredPermissions: [],
+          },
+        ]
+      : [
+          {
+            title: "Settings",
+            icon: "ri-settings-3-line",
+            subItems: [
+              {
+                title: "Activity Logs",
+                path: "/all-activities",
+                requiredPermissions: [],
+              }, // non-admins see only this
+            ],
+            requiredPermissions: [],
+          },
+        ]),
   ];
 
   // Filter menu items based on permissions
