@@ -678,23 +678,22 @@ const AllCampaigns = () => {
         <Breadcrumbs title="ALL CAMPAIGNS" breadcrumbItems={breadcrumbItems} />
         <Card>
           <CardBody>
-            {loading ? (
-              <div className="text-center my-5">
-                <Spinner color="primary" />
-              </div>
-            ) : (
-              <>
-                <div className="d-flex justify-content-end mb-3">
-                  <div style={{ width: "250px" }}>
-                    <Input
-                      type="text"
-                      placeholder="Search..."
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                    />
-                  </div>
+            <>
+              <div className="d-flex justify-content-end mb-3">
+                <div style={{ width: "250px" }}>
+                  <Input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                  />
                 </div>
-
+              </div>
+              {loading ? (
+                <div className="text-center my-5">
+                  <Spinner color="primary" />
+                </div>
+              ) : (
                 <div className="table-responsive">
                   <table className="table table-bordered table-nowrap">
                     <thead className="table-light">
@@ -851,93 +850,89 @@ const AllCampaigns = () => {
                     </tbody>
                   </table>
                 </div>
+              )}
 
-                {campaigns.length > 0 && (
-                  <Row className="align-items-center mt-3">
-                    <Col md={3} className="d-flex align-items-center">
-                      <span className="me-2">Show:</span>
-                      <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
-                        <DropdownToggle
-                          caret
-                          color="light"
-                          className="py-1 px-2"
-                        >
-                          {entriesPerPage}
-                        </DropdownToggle>
-                        <DropdownMenu>
-                          {[10, 25, 50, 100].map((size) => (
-                            <DropdownItem
-                              key={size}
-                              active={entriesPerPage === size}
-                              onClick={() => {
-                                setEntriesPerPage(size);
-                                setCurrentPage(1);
-                              }}
-                            >
-                              {size}
-                            </DropdownItem>
-                          ))}
-                        </DropdownMenu>
-                      </Dropdown>
-                      <span className="ms-2">entries</span>
-                    </Col>
+              {campaigns.length > 0 && (
+                <Row className="align-items-center mt-3">
+                  <Col md={3} className="d-flex align-items-center">
+                    <span className="me-2">Show:</span>
+                    <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
+                      <DropdownToggle caret color="light" className="py-1 px-2">
+                        {entriesPerPage}
+                      </DropdownToggle>
+                      <DropdownMenu>
+                        {[10, 25, 50, 100].map((size) => (
+                          <DropdownItem
+                            key={size}
+                            active={entriesPerPage === size}
+                            onClick={() => {
+                              setEntriesPerPage(size);
+                              setCurrentPage(1);
+                            }}
+                          >
+                            {size}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    <span className="ms-2">entries</span>
+                  </Col>
 
-                    <Col md={6} className="d-flex justify-content-center">
-                      <div className="d-flex align-items-center gap-2">
-                        <Button
-                          color="primary"
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1}
-                          size="sm"
-                        >
-                          {"<<"}
-                        </Button>
-                        <Button
-                          color="primary"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          size="sm"
-                        >
-                          {"<"}
-                        </Button>
+                  <Col md={6} className="d-flex justify-content-center">
+                    <div className="d-flex align-items-center gap-2">
+                      <Button
+                        color="primary"
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        size="sm"
+                      >
+                        {"<<"}
+                      </Button>
+                      <Button
+                        color="primary"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        size="sm"
+                      >
+                        {"<"}
+                      </Button>
 
-                        <Input
-                          type="number"
-                          min={1}
-                          max={totalPages}
-                          value={currentPage}
-                          onChange={handlePageInputChange}
-                          style={{ width: "60px" }}
-                          bsSize="sm"
-                        />
-                        <span>of {totalPages}</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={handlePageInputChange}
+                        style={{ width: "60px" }}
+                        bsSize="sm"
+                      />
+                      <span>of {totalPages}</span>
 
-                        <Button
-                          color="primary"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          size="sm"
-                        >
-                          {">"}
-                        </Button>
-                        <Button
-                          color="primary"
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={currentPage === totalPages}
-                          size="sm"
-                        >
-                          {">>"}
-                        </Button>
-                      </div>
-                    </Col>
+                      <Button
+                        color="primary"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                      >
+                        {">"}
+                      </Button>
+                      <Button
+                        color="primary"
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                      >
+                        {">>"}
+                      </Button>
+                    </div>
+                  </Col>
 
-                    <Col md={3} className="text-md-end">
-                      <span>Total: {totalItems} items</span>
-                    </Col>
-                  </Row>
-                )}
-              </>
-            )}
+                  <Col md={3} className="text-md-end">
+                    <span>Total: {totalItems} items</span>
+                  </Col>
+                </Row>
+              )}
+            </>
           </CardBody>
         </Card>
       </Container>
