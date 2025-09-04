@@ -499,7 +499,7 @@ import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import {
   deleteLead,
   getAllClientLeads,
-  updateLeadStatus,
+  // updateLeadStatus,
 } from "../../services/ClientleadService";
 import { toast } from "react-toastify";
 import { fetchVendorsAndClients } from "../../services/orderService";
@@ -525,7 +525,7 @@ const ClientLeads = () => {
   const navigate = useNavigate();
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  // const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState("Choose Client...");
   const [selectedVendor, setSelectedVendor] = useState("Choose Vendor...");
   const [searchText, setSearchText] = useState("");
@@ -626,7 +626,7 @@ const ClientLeads = () => {
 
   const toggleClientDropdown = () => setClientDropdownOpen((prev) => !prev);
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
-  const toggleStatusDropdown = () => setStatusDropdownOpen((prev) => !prev);
+  // const toggleStatusDropdown = () => setStatusDropdownOpen((prev) => !prev);
 
   const handleRowClick = (row) => {
     const query = currentFilter.orderId
@@ -655,31 +655,31 @@ const ClientLeads = () => {
     );
   };
 
-  const handleStatusUpdate = async (id, newStatus) => {
-    try {
-      setLoading(true);
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) =>
-          lead.id === id ? { ...lead, status: newStatus } : lead
-        )
-      );
+  // const handleStatusUpdate = async (id, newStatus) => {
+  //   try {
+  //     setLoading(true);
+  //     setLeads((prevLeads) =>
+  //       prevLeads.map((lead) =>
+  //         lead.id === id ? { ...lead, status: newStatus } : lead
+  //       )
+  //     );
 
-      const response = await updateLeadStatus(id, newStatus);
-      console.log("Update Lead Status Response:", response);
-      if (response.success) {
-        await fetchLeads();
-        toast.success(`Lead status updated to ${newStatus}`);
-      } else {
-        throw new Error(response.message || "Failed to update status");
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      await fetchLeads();
-      toast.error(`Failed to update status: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     const response = await updateLeadStatus(id, newStatus);
+  //     console.log("Update Lead Status Response:", response);
+  //     if (response.success) {
+  //       await fetchLeads();
+  //       toast.success(`Lead status updated to ${newStatus}`);
+  //     } else {
+  //       throw new Error(response.message || "Failed to update status");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error updating status:", error);
+  //     await fetchLeads();
+  //     toast.error(`Failed to update status: ${error.message}`);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const filteredLeads = useMemo(() => {
     let filtered = [...leads];
@@ -702,7 +702,7 @@ const ClientLeads = () => {
     );
   }, [leads, searchText, currentFilter.orderId, currentFilter.status]);
 
-  const statusOptions = ["all", "pending", "accepted", "rejected"];
+  // const statusOptions = ["all", "pending", "accepted", "rejected"];
 
   const columns = useMemo(
     () => [
