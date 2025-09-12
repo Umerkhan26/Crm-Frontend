@@ -98,6 +98,7 @@ const AddLeads = () => {
             (c) =>
               c.value === editData.campaign_id ||
               c.label === editData.campaignType ||
+              c.label === editData.campaignName ||
               c.value === editData.campaignType ||
               c.label.toLowerCase() ===
                 (editData.campaignType || "").toLowerCase()

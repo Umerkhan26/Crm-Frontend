@@ -640,6 +640,7 @@ const ClientLeads = () => {
       state: {
         editData: {
           ...lead,
+          campaign_id: lead.campaign_id,
           campaignType: lead.campaignName || lead.campaignType,
           isClientLead: true,
         },

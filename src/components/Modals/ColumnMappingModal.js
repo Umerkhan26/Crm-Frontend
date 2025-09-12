@@ -230,6 +230,85 @@ const ColumnMappingModal = ({
     return date.toISOString().split("T")[0];
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (!selectedOrder || !selectedFile) {
+  //     toast.error("No order or file selected");
+  //     return;
+  //   }
+  //   setLoading(true);
+  //   try {
+  //     const reader = new FileReader();
+  //     reader.onload = async (event) => {
+  //       try {
+  //         const data = event.target.result;
+  //         const workbook = XLSX.read(data, { type: "binary" });
+  //         const sheetName = workbook.SheetNames[0];
+  //         const worksheet = workbook.Sheets[sheetName];
+  //         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+  //         console.log("Parsed Excel data:", jsonData);
+
+  //         // Validate mapping
+  //         const requiredFields = ["first_name", "last_name", "agent_name"];
+  //         const missingMappings = requiredFields.filter(
+  //           (field) => !mapping[field]
+  //         );
+  //         if (missingMappings.length > 0) {
+  //           toast.error(
+  //             `Please map required fields: ${missingMappings.join(", ")}`
+  //           );
+  //           return;
+  //         }
+
+  //         // Create leadData based on mapping
+  //         const mappedData = jsonData.map((row) => {
+  //           const leadData = {};
+  //           fields.forEach((field) => {
+  //             const mappedColumn = mapping[field.col_slug];
+  //             let value =
+  //               mappedColumn && row[mappedColumn.trim()] !== undefined
+  //                 ? row[mappedColumn.trim()]
+  //                 : "";
+  //             if (field.col_slug === "date" && typeof value === "number") {
+  //               value = excelSerialDateToDate(value);
+  //             }
+  //             leadData[field.col_slug] = value;
+  //           });
+  //           return { leadData };
+  //         });
+  //         console.log("Mapped data to send:", mappedData);
+
+  //         // Send to backend
+  //         const response = await importClientLeads(
+  //           selectedFile,
+  //           selectedOrder.id,
+  //           mappedData
+  //         );
+  //         console.log("Backend response:", response);
+
+  //         const imported = response.imported || 0;
+  //         const skipped = response.skipped || [];
+  //         toast.success(
+  //           `${imported} client leads imported successfully. Skipped: ${skipped.length}`
+  //         );
+
+  //         onImport(response);
+  //         toggle();
+  //       } catch (error) {
+  //         console.error("Error processing file:", error);
+  //         toast.error("Failed to process file: " + error.message);
+  //       } finally {
+  //         setLoading(false);
+  //       }
+  //     };
+  //     reader.readAsBinaryString(selectedFile);
+  //   } catch (error) {
+  //     console.error("Import error:", error);
+  //     toast.error(error.message || "Failed to import leads");
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedOrder || !selectedFile) {
@@ -260,6 +339,11 @@ const ColumnMappingModal = ({
             return;
           }
 
+          // Get campaign name from selected order - FIXED THIS LINE
+          const campaignName =
+            selectedOrder.campaign?.campaignName || selectedOrder.campaign_name;
+          console.log("Extracted campaign name:", campaignName);
+
           // Create leadData based on mapping
           const mappedData = jsonData.map((row) => {
             const leadData = {};
@@ -274,9 +358,25 @@ const ColumnMappingModal = ({
               }
               leadData[field.col_slug] = value;
             });
-            return { leadData };
+
+            // Add campaign name to each lead
+            return {
+              leadData,
+              campaignName, // This should now be included in the payload
+            };
           });
+
           console.log("Mapped data to send:", mappedData);
+          console.log(
+            "First item structure:",
+            mappedData[0]
+              ? {
+                  hasLeadData: !!mappedData[0].leadData,
+                  hasCampaignName: !!mappedData[0].campaignName,
+                  campaignName: mappedData[0].campaignName,
+                }
+              : "No data"
+          );
 
           // Send to backend
           const response = await importClientLeads(
@@ -284,7 +384,18 @@ const ColumnMappingModal = ({
             selectedOrder.id,
             mappedData
           );
-          console.log("Backend response:", response);
+
+          // Enhanced logging to see full response
+          console.log("=== BACKEND RESPONSE ===");
+          console.log("Full response:", response);
+          console.log("Response type:", typeof response);
+          console.log("Response keys:", Object.keys(response));
+          console.log("Response success:", response.success);
+          console.log("Response message:", response.message);
+          console.log("Imported count:", response.imported);
+          console.log("Skipped items:", response.skipped);
+          console.log("Skipped count:", response.skipped?.length);
+          console.log("=== END RESPONSE ===");
 
           const imported = response.imported || 0;
           const skipped = response.skipped || [];
@@ -308,7 +419,6 @@ const ColumnMappingModal = ({
       setLoading(false);
     }
   };
-
   return (
     <Modal
       isOpen={isOpen}
