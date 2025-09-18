@@ -427,14 +427,12 @@ const AllCampaigns = () => {
 
   //       let filteredCampaigns = [];
 
-  //       if (campaignsData.data?.length && user?.role?.Permissions) {
+  //       if (user?.role?.Permissions) {
   //         const isAdmin = user.role.name === "Admin";
 
   //         if (isAdmin) {
-  //           // Admin sees all campaigns
-  //           filteredCampaigns = campaignsData.data;
+  //           filteredCampaigns = campaignsData.data || [];
   //         } else {
-  //           // Non-admin users: Check specific permissions
   //           const specificPermissions = user.role.Permissions.filter(
   //             (perm) =>
   //               perm.name === "getCampaignById" &&
@@ -445,34 +443,28 @@ const AllCampaigns = () => {
   //             parseInt(perm.resourceId)
   //           );
 
-  //           // Check if user has general campaign:get permission
   //           const hasGeneralPermission = user.role.Permissions.some(
   //             (perm) => perm.name === "campaign:get"
   //           );
 
-  //           // Check if user has campaign:create permission
   //           const hasCreatePermission = user.role.Permissions.some(
   //             (perm) => perm.name === "campaign:create"
   //           );
 
   //           if (hasGeneralPermission && allowedCampaignIds.length === 0) {
-  //             // User has full access (but not Admin)
-  //             filteredCampaigns = campaignsData.data;
+  //             filteredCampaigns = campaignsData.data || [];
   //           } else if (hasGeneralPermission && allowedCampaignIds.length > 0) {
-  //             // User has general permission BUT also has specific restrictions
-  //             filteredCampaigns = campaignsData.data.filter((campaign) =>
-  //               allowedCampaignIds.includes(parseInt(campaign.id))
+  //             filteredCampaigns = (campaignsData.data || []).filter(
+  //               (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
   //             );
   //           } else if (allowedCampaignIds.length > 0) {
-  //             // User only has specific campaign permissions
-  //             filteredCampaigns = campaignsData.data.filter((campaign) =>
-  //               allowedCampaignIds.includes(parseInt(campaign.id))
+  //             filteredCampaigns = (campaignsData.data || []).filter(
+  //               (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
   //             );
   //           }
 
-  //           // Add campaigns created by the user (if they have create permission)
   //           if (hasCreatePermission) {
-  //             const userCreatedCampaigns = campaignsData.data.filter(
+  //             const userCreatedCampaigns = (campaignsData.data || []).filter(
   //               (campaign) => campaign.createdBy === user.id
   //             );
   //             filteredCampaigns = [
@@ -491,7 +483,11 @@ const AllCampaigns = () => {
   //       setTotalPages(Math.ceil(filteredCampaigns.length / entriesPerPage));
   //     } catch (error) {
   //       console.error("Error loading data:", error);
-  //       toast.error("Failed to load campaigns");
+
+  //       // ✅ Instead of toaster, just show empty table
+  //       setCampaigns([]);
+  //       setTotalItems(0);
+  //       setTotalPages(1);
   //     } finally {
   //       setLoading(false);
   //     }
@@ -519,11 +515,14 @@ const AllCampaigns = () => {
         let filteredCampaigns = [];
 
         if (user?.role?.Permissions) {
-          const isAdmin = user.role.name === "Admin";
+          // ✅ normalize role name check
+          const isAdmin = user.role.name?.toLowerCase() === "admin";
 
           if (isAdmin) {
+            // ✅ Admin → always see all campaigns
             filteredCampaigns = campaignsData.data || [];
           } else {
+            // ✅ Non-admins → check permissions
             const specificPermissions = user.role.Permissions.filter(
               (perm) =>
                 perm.name === "getCampaignById" &&
@@ -546,18 +545,20 @@ const AllCampaigns = () => {
               filteredCampaigns = campaignsData.data || [];
             } else if (hasGeneralPermission && allowedCampaignIds.length > 0) {
               filteredCampaigns = (campaignsData.data || []).filter(
-                (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
+                (campaign) => allowedCampaignIds.includes(Number(campaign.id))
               );
             } else if (allowedCampaignIds.length > 0) {
               filteredCampaigns = (campaignsData.data || []).filter(
-                (campaign) => allowedCampaignIds.includes(parseInt(campaign.id))
+                (campaign) => allowedCampaignIds.includes(Number(campaign.id))
               );
             }
 
             if (hasCreatePermission) {
               const userCreatedCampaigns = (campaignsData.data || []).filter(
-                (campaign) => campaign.createdBy === user.id
+                (campaign) => Number(campaign.createdBy) === Number(user.id) // ✅ fix type mismatch
               );
+
+              // ✅ Merge own campaigns into list without duplicates
               filteredCampaigns = [
                 ...filteredCampaigns,
                 ...userCreatedCampaigns.filter(
@@ -574,8 +575,6 @@ const AllCampaigns = () => {
         setTotalPages(Math.ceil(filteredCampaigns.length / entriesPerPage));
       } catch (error) {
         console.error("Error loading data:", error);
-
-        // ✅ Instead of toaster, just show empty table
         setCampaigns([]);
         setTotalItems(0);
         setTotalPages(1);
