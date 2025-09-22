@@ -482,7 +482,7 @@ const CreateRole = () => {
           newRolePermissions: JSON.parse(JSON.stringify(componentPermissions)),
           success: true,
         });
-        // No localStorage update for new roles since no users have it yet
+        navigate("/role-index");
       }
     } catch (error) {
       console.error("Submission error:", error);

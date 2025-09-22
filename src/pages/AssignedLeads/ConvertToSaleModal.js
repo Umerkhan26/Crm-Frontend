@@ -223,7 +223,7 @@ const ConvertToSaleModal = ({
     const loadProducts = async () => {
       try {
         setLoading(true);
-        const result = await fetchAllProducts({ page: 1, limit: 10 });
+        const result = await fetchAllProducts({ page: 1, limit: 20 });
         const allProducts = result?.data || [];
 
         const names = Array.from(
@@ -235,6 +235,14 @@ const ConvertToSaleModal = ({
         );
 
         setProductNames(names);
+
+        if (
+          names.length === 1 &&
+          saleItems.length === 1 &&
+          !saleItems[0].productName
+        ) {
+          setSaleItems([{ productName: names[0], price: "", notes: "" }]);
+        }
       } catch (err) {
         console.error("Error loading products:", err);
         toast.error("Failed to load products.");

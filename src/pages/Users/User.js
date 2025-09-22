@@ -182,12 +182,8 @@ const AllUsers = () => {
               : user
           )
         );
-        toast.success(
-          `User ${action === "block" ? "blocked" : "unblocked"} successfully`
-        );
       } catch (error) {
         console.error(`Failed to ${action} user:`, error);
-        toast.error(`Failed to ${action} the user.`);
       }
     };
     await confirmBlockUnblock(onConfirm, null, isBlocked, "user");
