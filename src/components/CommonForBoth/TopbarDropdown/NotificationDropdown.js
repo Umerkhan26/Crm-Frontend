@@ -27,8 +27,8 @@ const NotificationDropdown = ({ t }) => {
       if (!userId) {
         throw new Error("User ID not found");
       }
-      const response = await getNotifications(userId);
-      setNotifications(response);
+      const response = await getNotifications(userId, 1, 10);
+      setNotifications(Array.isArray(response.data) ? response.data : []);
       setLoading(false);
     } catch (error) {
       setError(error.message);

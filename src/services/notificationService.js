@@ -1,14 +1,17 @@
 import { API_URL } from "./auth";
 
-const getNotifications = async (userId) => {
+const getNotifications = async (userId, page = 1, limit = 15) => {
   const token = localStorage.getItem("token");
-  const response = await fetch(`${API_URL}/getNotificationById/${userId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await fetch(
+    `${API_URL}/getNotificationById/${userId}?page=${page}&limit=${limit}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to fetch notifications");

@@ -343,7 +343,6 @@ export const getMenuItems = (user) => {
         ]
       : []),
 
-    // Settings section
     ...(isAdminUser
       ? [
           {
@@ -384,6 +383,11 @@ export const getMenuItems = (user) => {
             title: "Settings",
             icon: "ri-settings-3-line",
             subItems: [
+              {
+                title: "Notification",
+                path: "/all-notifications",
+                requiredPermissions: [],
+              },
               {
                 title: "Activity Logs",
                 path: "/all-activities",

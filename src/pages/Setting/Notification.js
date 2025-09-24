@@ -45,25 +45,24 @@ const Notification = ({ t }) => {
     },
     [t]
   );
-
   const fetchNotifications = useCallback(
     async (pageNum = 1) => {
       setLoading(true);
       setError(null);
       try {
         const userId = localStorage.getItem("userId");
-        if (!userId) {
-          throw new Error(t("User ID not found"));
-        }
-        const limit = pageNum === 1 ? 14 : 7;
+        if (!userId) throw new Error(t("User ID not found"));
+
+        const limit = 15;
+        // 👇 Ensure backend accepts page + limit
         const response = await getNotifications(userId, pageNum, limit);
+        console.log("notication", response);
 
         let data = Array.isArray(response) ? response : response.data || [];
         let total = Number.isFinite(response.total) ? response.total : null;
 
         setNotifications((prev) => {
           const newNotifications = pageNum === 1 ? data : [...prev, ...data];
-          // Update hasMore based on total or data length
           if (total !== null) {
             setHasMore(newNotifications.length < total);
             setTotalNotifications(total);
@@ -78,7 +77,6 @@ const Notification = ({ t }) => {
       } catch (error) {
         setError(error.message);
         setLoading(false);
-        console.error("Failed to fetch notifications:", error);
       }
     },
     [t]
@@ -175,7 +173,8 @@ const Notification = ({ t }) => {
       });
     }
 
-    // Fetch initial data
+    setPage(1);
+    setNotifications([]);
     fetchUnreadCount();
     fetchNotifications(1);
 
