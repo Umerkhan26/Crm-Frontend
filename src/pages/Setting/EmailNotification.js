@@ -38,65 +38,6 @@ const EmailNotification = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [permissions, setPermissions] = useState({});
 
-  // const loadData = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const [rolesResponse, permissionsData] = await Promise.all([
-  //       getAllRoles({ page: 1, limit: 100, search: "" }),
-  //       fetchEmailPermissions(),
-  //     ]);
-
-  //     const rolesData = Array.isArray(rolesResponse.data)
-  //       ? rolesResponse.data
-  //       : [];
-  //     setRoles(rolesData);
-
-  //     const fixedPermissionsData = permissionsData.map((perm) => {
-  //       let rolesArray =
-  //         typeof perm.allowedRoles === "string"
-  //           ? JSON.parse(perm.allowedRoles)
-  //           : perm.allowedRoles || [];
-
-  //       // Ensure we have role objects (not IDs)
-  //       rolesArray = rolesArray
-  //         .map((role) =>
-  //           typeof role === "number"
-  //             ? roles.find((r) => r.id === role) || null
-  //             : role
-  //         )
-  //         .filter(Boolean);
-
-  //       return { ...perm, allowedRoles: rolesArray };
-  //     });
-
-  //     setEmailPermissions(fixedPermissionsData);
-
-  //     const initialPermissions = {};
-  //     rolesData.forEach((role) => {
-  //       initialPermissions[role.id] = {};
-  //       fixedPermissionsData.forEach((perm) => {
-  //         const rolePermData = fixedPermissionsData.find(
-  //           (p) => p.id === perm.id
-  //         );
-  //         initialPermissions[role.id][perm.id] = {
-  //           canSend: rolePermData.canSend || false,
-  //           allowedRoles: rolePermData.allowedRoles || [],
-  //         };
-  //       });
-  //     });
-  //     setPermissions(initialPermissions);
-
-  //     if (rolesData.length > 0 && !selectedRole) {
-  //       setSelectedRole(rolesData[0].id);
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to load data:", error);
-  //     toast.error("Failed to load permissions data");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const loadData = async () => {
     setLoading(true);
     try {
