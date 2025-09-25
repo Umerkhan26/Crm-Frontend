@@ -1,33 +1,3 @@
-// import { Navigate, useLocation } from "react-router-dom";
-
-// const AppRoute = ({ children }) => {
-//   const location = useLocation();
-//   const isAuthenticated = !!localStorage.getItem("authUser");
-
-//   if (!isAuthenticated) {
-//     return <Navigate to="/login" state={{ from: location }} replace />;
-//   }
-
-//   return children;
-// };
-
-// export default AppRoute;
-
-// const AppRoute = ({ children, requiredPermissions = [] }) => {
-//   const user = useSelector((state) => state.Login.user);
-
-//   if (requiredPermissions.length > 0) {
-//     const hasAccess = hasAnyPermission(user, requiredPermissions);
-//     if (!hasAccess) {
-//       return <Navigate to="/dashboard" replace />;
-//     }
-//   }
-
-//   return children;
-// };
-
-// export default AppRoute;
-
 import React from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
@@ -42,6 +12,9 @@ const AppRoute = ({
   const isUserAdmin = isAdmin(user);
 
   // If route doesn't require authentication
+  if (isAuthProtected && !user) {
+    return <Navigate to="/login" replace />;
+  }
   if (!isAuthProtected) {
     return children;
   }
