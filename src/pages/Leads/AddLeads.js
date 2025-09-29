@@ -121,7 +121,15 @@ const AddLeads = () => {
             throw new Error("Invalid campaign fields response");
           }
 
-          const fields = JSON.parse(response[0].fields);
+          // const fields = JSON.parse(response[0].fields);
+          // setCampaignFields(fields);
+
+          let fields;
+          if (typeof response[0].fields === "string") {
+            fields = JSON.parse(response[0].fields);
+          } else {
+            fields = response[0].fields;
+          }
           setCampaignFields(fields);
 
           // Initialize form data with editData

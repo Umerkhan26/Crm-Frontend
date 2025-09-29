@@ -8,7 +8,6 @@ export const getAuthToken = () => {
   return token;
 };
 
-// Fetch all campaigns
 export const fetchCampaigns = async () => {
   try {
     const token = getAuthToken();
@@ -52,7 +51,6 @@ export const fetchCampaigns = async () => {
     throw new Error(`Error fetching campaigns: ${error.message}`);
   }
 };
-// Create a new order
 export const createOrder = async (payload) => {
   try {
     const token = getAuthToken();

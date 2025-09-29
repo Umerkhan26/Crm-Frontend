@@ -25,18 +25,55 @@ const AddLeadModal = ({ isOpen, toggle, onSubmit, selectedOrder }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  // useEffect(() => {
+  //   if (selectedOrder && selectedOrder.campaign) {
+  //     try {
+  //       const parsedFields = JSON.parse(selectedOrder.campaign.fields);
+  //       setFields(parsedFields);
+  //       const initialData = {};
+  //       parsedFields.forEach((field) => {
+  //         initialData[field.col_slug] = "";
+  //       });
+  //       setFormData(initialData);
+  //     } catch (error) {
+  //       console.error("Error parsing campaign fields:", error);
+  //       setFields([]);
+  //     }
+  //   }
+  // }, [selectedOrder]);
+
   useEffect(() => {
     if (selectedOrder && selectedOrder.campaign) {
       try {
-        const parsedFields = JSON.parse(selectedOrder.campaign.fields);
+        let parsedFields = [];
+
+        const fields = selectedOrder.campaign.fields;
+
+        if (typeof fields === "string") {
+          // Server case → JSON string
+          parsedFields = JSON.parse(fields);
+        } else if (Array.isArray(fields)) {
+          // Local case → already array
+          parsedFields = fields;
+        } else if (typeof fields === "object" && fields !== null) {
+          // Edge case → single object
+          parsedFields = [fields];
+        }
+
         setFields(parsedFields);
+
+        // Initialize form data
         const initialData = {};
         parsedFields.forEach((field) => {
           initialData[field.col_slug] = "";
         });
         setFormData(initialData);
       } catch (error) {
-        console.error("Error parsing campaign fields:", error);
+        console.error(
+          "Error parsing campaign fields:",
+          error,
+          selectedOrder.campaign.fields
+        );
         setFields([]);
       }
     }

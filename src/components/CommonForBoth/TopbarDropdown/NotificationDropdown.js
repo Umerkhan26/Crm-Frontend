@@ -104,10 +104,38 @@ const NotificationDropdown = ({ t }) => {
     }
   }, []);
 
+  // useEffect(() => {
+  //   // Initialize Socket.IO connection
+  //   const newSocket = io("http://localhost:3000");
+  //   setSocket(newSocket);
+  //   const userId = localStorage.getItem("userId");
+
+  //   if (userId) {
+  //     newSocket.emit("join", `user_${userId}`);
+  //     newSocket.on("notification", (notification) => {
+  //       setNotifications((prev) => [notification, ...prev]);
+  //       setUnreadCount((prev) => prev + 1);
+  //     });
+  //   }
+
+  //   fetchUnreadCount();
+  //   fetchNotifications();
+
+  //   // Cleanup
+  //   return () => {
+  //     if (newSocket) {
+  //       newSocket.disconnect();
+  //     }
+  //   };
+  // }, [fetchNotifications, fetchUnreadCount]);
+
   useEffect(() => {
     // Initialize Socket.IO connection
-    const newSocket = io("http://localhost:3000");
+    const socketServerUrl =
+      process.env.REACT_APP_SOCKET_SERVER_URL || "http://localhost:3000";
+    const newSocket = io(socketServerUrl);
     setSocket(newSocket);
+
     const userId = localStorage.getItem("userId");
 
     if (userId) {
@@ -128,7 +156,6 @@ const NotificationDropdown = ({ t }) => {
       }
     };
   }, [fetchNotifications, fetchUnreadCount]);
-
   const toggle = () => {
     setMenu((prev) => {
       if (!prev) {

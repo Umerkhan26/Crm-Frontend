@@ -64,7 +64,17 @@ export const fetchCampaigns = async ({ page = 1, limit = 10, search = "" }) => {
       data: allCampaigns.map((campaign) => ({
         id: campaign.id,
         campaignName: campaign.campaignName,
-        parsedFields: campaign.fields ? JSON.parse(campaign.fields) : [],
+        parsedFields: (() => {
+          try {
+            if (typeof campaign.fields === "string") {
+              return JSON.parse(campaign.fields);
+            }
+            return Array.isArray(campaign.fields) ? campaign.fields : [];
+          } catch (e) {
+            console.error("Error parsing campaign.fields:", campaign.fields, e);
+            return [];
+          }
+        })(),
       })),
       totalItems: data.totalItems || 0,
       totalPages: data.totalPages || 1,

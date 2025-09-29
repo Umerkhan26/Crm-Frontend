@@ -8,10 +8,13 @@ const AppRoute = ({
   requiredPermissions = [],
   isAuthProtected = true,
 }) => {
-  const user = useSelector((state) => state.Login?.user);
+  const user =
+    useSelector((state) => state.Login?.user) ||
+    JSON.parse(localStorage.getItem("authUser") || "null");
+
   const isUserAdmin = isAdmin(user);
 
-  // If route doesn't require authentication
+  // If route doesn't xrequire authentication
   if (isAuthProtected && !user) {
     return <Navigate to="/login" replace />;
   }

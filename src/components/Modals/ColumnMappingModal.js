@@ -186,25 +186,63 @@ const ColumnMappingModal = ({
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // useEffect(() => {
+  //   if (selectedOrder && selectedOrder.campaign) {
+  //     try {
+  //       const parsedFields = JSON.parse(selectedOrder.campaign.fields || "[]");
+  //       console.log("Parsed campaign fields:", parsedFields);
+  //       // Trim excelColumns to handle trailing spaces
+  //       const trimmedExcelColumns = excelColumns.map((col) => col.trim());
+  //       console.log("Trimmed Excel columns:", trimmedExcelColumns);
+  //       setFields(parsedFields);
+  //       const initialMapping = {};
+  //       parsedFields.forEach((field) => {
+  //         // Auto-map if column exists in trimmedExcelColumns
+  //         initialMapping[field.col_slug] = trimmedExcelColumns.includes(
+  //           field.col_slug
+  //         )
+  //           ? field.col_slug
+  //           : "";
+  //       });
+  //       console.log("Initial mapping:", initialMapping);
+  //       setMapping(initialMapping);
+  //     } catch (error) {
+  //       console.error("Error parsing campaign fields:", error);
+  //       toast.error("Failed to parse campaign fields");
+  //       setFields([]);
+  //     }
+  //   }
+  // }, [selectedOrder, excelColumns]);
+
   useEffect(() => {
     if (selectedOrder && selectedOrder.campaign) {
       try {
-        const parsedFields = JSON.parse(selectedOrder.campaign.fields || "[]");
-        console.log("Parsed campaign fields:", parsedFields);
-        // Trim excelColumns to handle trailing spaces
-        const trimmedExcelColumns = excelColumns.map((col) => col.trim());
-        console.log("Trimmed Excel columns:", trimmedExcelColumns);
+        let parsedFields = [];
+
+        if (typeof selectedOrder.campaign.fields === "string") {
+          parsedFields = JSON.parse(selectedOrder.campaign.fields || "[]");
+        } else if (Array.isArray(selectedOrder.campaign.fields)) {
+          parsedFields = selectedOrder.campaign.fields;
+        } else if (
+          typeof selectedOrder.campaign.fields === "object" &&
+          selectedOrder.campaign.fields !== null
+        ) {
+          parsedFields = [selectedOrder.campaign.fields];
+        }
+
+        console.log("Normalized campaign fields:", parsedFields);
         setFields(parsedFields);
+
+        // Initialize mapping
+        const trimmedExcelColumns = excelColumns.map((col) => col.trim());
         const initialMapping = {};
         parsedFields.forEach((field) => {
-          // Auto-map if column exists in trimmedExcelColumns
           initialMapping[field.col_slug] = trimmedExcelColumns.includes(
             field.col_slug
           )
             ? field.col_slug
             : "";
         });
-        console.log("Initial mapping:", initialMapping);
         setMapping(initialMapping);
       } catch (error) {
         console.error("Error parsing campaign fields:", error);
