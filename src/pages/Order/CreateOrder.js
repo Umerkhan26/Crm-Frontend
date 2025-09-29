@@ -22,6 +22,7 @@ import {
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import debounce from "lodash/debounce";
+import { ClipLoader } from "react-spinners";
 
 const NewOrder = () => {
   const location = useLocation();
@@ -389,6 +390,28 @@ const NewOrder = () => {
             { title: editData ? "Edit Order" : "Create New Order", link: "#" },
           ]}
         />
+
+        {isLoading && (
+          <div
+            className="loading-overlay"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(255, 255, 255, 0.8)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div className="text-center">
+              <ClipLoader color={"#1c3fedff"} loading={isLoading} size={40} />
+            </div>
+          </div>
+        )}
         <Row>
           <Col xl="12">
             <Card>
