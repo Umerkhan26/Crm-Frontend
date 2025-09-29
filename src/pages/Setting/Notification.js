@@ -192,6 +192,7 @@ const Notification = ({ t }) => {
       process.env.REACT_APP_SOCKET_SERVER_URL || "http://localhost:3000";
     const newSocket = io(socketServerUrl);
     setSocket(newSocket);
+
     const userId = localStorage.getItem("userId");
 
     if (userId) {
@@ -215,6 +216,7 @@ const Notification = ({ t }) => {
       }
     };
   }, [fetchNotifications, fetchUnreadCount]);
+
   return (
     <div className="page-content">
       <Container fluid>
