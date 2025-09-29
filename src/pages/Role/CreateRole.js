@@ -25,11 +25,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 // Permission structure
 const componentPermissions = {
-  Dashboard: {
-    view: false,
-    analytics: false,
-    orders: false,
-  },
+  // Dashboard: {
+  //   view: false,
+  //   analytics: false,
+  //   orders: false,
+  // },
   Users: {
     own: false,
     view: false,
