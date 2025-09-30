@@ -186,6 +186,10 @@ const RegisterUser = () => {
       delete payload.password;
     }
 
+    if (selectedUserRole?.value) {
+      payload.userrole = selectedUserRole.value;
+    }
+
     const formPayload = new FormData();
 
     // Append all fields EXCEPT userImage first

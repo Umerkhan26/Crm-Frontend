@@ -113,7 +113,12 @@ export const getAllClientLeads = async (
         id: lead.id,
         orderId: lead.order_id,
         campaignName: lead.campaign?.campaignName || "",
-        leadData: JSON.parse(lead.leadData || "{}"),
+        // leadData: JSON.parse(lead.leadData || "{}"),
+        leadData:
+          typeof lead.leadData === "string"
+            ? JSON.parse(lead.leadData || "{}")
+            : lead.leadData || {},
+
         status: lead.status,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
