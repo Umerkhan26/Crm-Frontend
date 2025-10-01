@@ -77,11 +77,24 @@ const Sale = () => {
           if (sale.products && typeof sale.products === "string") {
             parsedProducts = JSON.parse(sale.products);
           }
-          if (sale.Lead?.leadData && typeof sale.Lead.leadData === "string") {
-            parsedLeadData = {
-              ...parsedLeadData,
-              ...JSON.parse(sale.Lead.leadData),
-            };
+          // if (sale.Lead?.leadData && typeof sale.Lead.leadData === "string") {
+          //   parsedLeadData = {
+          //     ...parsedLeadData,
+          //     ...JSON.parse(sale.Lead.leadData),
+          //   };
+          // }
+          if (sale.Lead?.leadData) {
+            if (typeof sale.Lead.leadData === "string") {
+              parsedLeadData = {
+                ...parsedLeadData,
+                ...JSON.parse(sale.Lead.leadData),
+              };
+            } else if (typeof sale.Lead.leadData === "object") {
+              parsedLeadData = {
+                ...parsedLeadData,
+                ...sale.Lead.leadData,
+              };
+            }
           }
         } catch (error) {
           console.error(
