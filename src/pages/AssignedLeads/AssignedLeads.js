@@ -98,6 +98,28 @@ const UserLeads = ({ userId }) => {
         return "all";
     }
   };
+
+  // Utility: Safe JSON parse for both string/object cases
+  const safeParse = (value, fallback = {}) => {
+    try {
+      if (!value) return fallback;
+
+      if (typeof value === "string") {
+        if (value.trim() === "[object Object]") return fallback;
+        return JSON.parse(value);
+      }
+
+      if (typeof value === "object") {
+        return value;
+      }
+
+      return fallback;
+    } catch (err) {
+      console.warn("Safe parse failed:", value, err);
+      return fallback;
+    }
+  };
+
   const loadData = useCallback(async () => {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }));
@@ -169,10 +191,11 @@ const UserLeads = ({ userId }) => {
         leads = leads.filter((lead) => {
           if (Number(lead.assigneeId) === Number(targetUserId)) return true;
           try {
-            const assignees =
-              typeof lead.assignees === "string"
-                ? JSON.parse(lead.assignees)
-                : lead.assignees || [];
+            // const assignees =
+            //   typeof lead.assignees === "string"
+            //     ? JSON.parse(lead.assignees)
+            //     : lead.assignees || [];
+            const assignees = safeParse(lead.assignees, []);
             return assignees.some(
               (a) => Number(a.userId) === Number(targetUserId)
             );
@@ -190,45 +213,72 @@ const UserLeads = ({ userId }) => {
       }
 
       // Process all leads to extract the proper status and assignment info
+      // const mappedLeads = leads
+      //   .map((lead) => {
+      //     try {
+      //       const leadData =
+      //         typeof lead.leadData === "string"
+      //           ? JSON.parse(lead.leadData)
+      //           : lead.leadData || {};
+      //       const assignees =
+      //         typeof lead.assignees === "string"
+      //           ? JSON.parse(lead.assignees)
+      //           : Array.isArray(lead.assignees)
+      //           ? lead.assignees
+      //           : [];
+      //       let status = lead.status ? validateStatus(lead.status) : "pending";
+
+      //       // Find the user's specific assignment
+      //       const userAssignment =
+      //         assignees.find(
+      //           (a) => Number(a.userId) === Number(targetUserId)
+      //         ) || {};
+
+      //       if (userAssignment?.status) {
+      //         status = validateStatus(userAssignment.status);
+      //       }
+
+      //       return {
+      //         ...lead,
+      //         leadData,
+      //         assignees,
+      //         status, // Prioritize user-specific status
+      //         status_updated: userAssignment.status_updated || false,
+      //         assigneeId: userAssignment.userId || lead.assigneeId,
+      //       };
+      //     } catch (error) {
+      //       console.error("Error processing lead:", lead.id, error);
+      //       return null;
+      //     }
+      //   })
+      //   .filter((lead) => lead !== null);
+
       const mappedLeads = leads
         .map((lead) => {
-          try {
-            const leadData =
-              typeof lead.leadData === "string"
-                ? JSON.parse(lead.leadData)
-                : lead.leadData || {};
-            const assignees =
-              typeof lead.assignees === "string"
-                ? JSON.parse(lead.assignees)
-                : Array.isArray(lead.assignees)
-                ? lead.assignees
-                : [];
-            let status = lead.status ? validateStatus(lead.status) : "pending";
+          const leadData = safeParse(lead.leadData, {});
+          const assignees = safeParse(lead.assignees, []);
 
-            // Find the user's specific assignment
-            const userAssignment =
-              assignees.find(
-                (a) => Number(a.userId) === Number(targetUserId)
-              ) || {};
+          let status = lead.status ? validateStatus(lead.status) : "pending";
 
-            if (userAssignment?.status) {
-              status = validateStatus(userAssignment.status);
-            }
+          const userAssignment =
+            assignees.find((a) => Number(a.userId) === Number(targetUserId)) ||
+            {};
 
-            return {
-              ...lead,
-              leadData,
-              assignees,
-              status, // Prioritize user-specific status
-              status_updated: userAssignment.status_updated || false,
-              assigneeId: userAssignment.userId || lead.assigneeId,
-            };
-          } catch (error) {
-            console.error("Error processing lead:", lead.id, error);
-            return null;
+          if (userAssignment?.status) {
+            status = validateStatus(userAssignment.status);
           }
+
+          return {
+            ...lead,
+            leadData,
+            assignees,
+            status,
+            status_updated: userAssignment.status_updated || false,
+            assigneeId: userAssignment.userId || lead.assigneeId,
+          };
         })
         .filter((lead) => lead !== null);
+
       console.log("Processed leads:", mappedLeads);
       console.log("Final status counts:", statusCounts);
       // Update state with the processed data
@@ -417,10 +467,11 @@ const UserLeads = ({ userId }) => {
         accessor: "leadData.agent_name",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}

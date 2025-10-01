@@ -52,7 +52,7 @@ const RegisterUser = () => {
 
   // Static userrole options based on backend ENUM
   const userRoleOptions = [
-    { value: "", label: "Select User Role" },
+    { value: null, label: "Select User Role" },
     { value: "vendor", label: "Vendor" },
     { value: "client", label: "Client" },
     { value: "admin", label: "Admin" },
@@ -178,7 +178,8 @@ const RegisterUser = () => {
       ...formData,
       roleId: selectedRole?.value,
       roleName: selectedRole?.label,
-      userrole: selectedUserRole?.value || "",
+      // userrole: selectedUserRole?.value || "",
+      userrole: selectedUserRole?.value || null,
     };
 
     // Remove password from payload when updating
@@ -186,16 +187,27 @@ const RegisterUser = () => {
       delete payload.password;
     }
 
-    if (selectedUserRole?.value) {
-      payload.userrole = selectedUserRole.value;
-    }
+    // if (selectedUserRole?.value) {
+    //   payload.userrole = selectedUserRole.value;
+    // }
 
     const formPayload = new FormData();
 
-    // Append all fields EXCEPT userImage first
+    // // Append all fields EXCEPT userImage first
+    // for (const key in payload) {
+    //   if (
+    //     key !== "userImage" &&
+    //     payload[key] !== null &&
+    //     payload[key] !== undefined
+    //   ) {
+    //     formPayload.append(key, payload[key]);
+    //   }
+    // }
+
     for (const key in payload) {
       if (
         key !== "userImage" &&
+        key !== "userrole" &&
         payload[key] !== null &&
         payload[key] !== undefined
       ) {
@@ -203,6 +215,9 @@ const RegisterUser = () => {
       }
     }
 
+    if (payload.userrole) {
+      formPayload.append("userrole", payload.userrole);
+    }
     // ONLY append userImage if it's a File (new image selected)
     if (formData.userImage instanceof File) {
       formPayload.append(
@@ -215,7 +230,6 @@ const RegisterUser = () => {
     else if (formData.userImage === null) {
       formPayload.append("userImage", "null");
     }
-    // If userImage is a string (existing image URL), don't send anything to preserve it
 
     try {
       const token = localStorage.getItem("token");

@@ -193,15 +193,31 @@ const MasterLead = () => {
         return true;
       });
 
-      const normalizeLeadData = (lead) => {
-        if (typeof lead.leadData === "string") {
-          try {
-            return JSON.parse(lead.leadData);
-          } catch {
-            return {};
+      // const normalizeLeadData = (lead) => {
+      //   if (typeof lead.leadData === "string") {
+      //     try {
+      //       return JSON.parse(lead.leadData);
+      //     } catch {
+      //       return {};
+      //     }
+      //   }
+      //   return lead.leadData || {};
+      // };
+
+      const normalizeLeadData = (leadData) => {
+        try {
+          if (!leadData) return {};
+          if (typeof leadData === "string") {
+            return JSON.parse(leadData);
           }
+          if (typeof leadData === "object") {
+            return leadData;
+          }
+          return {};
+        } catch (err) {
+          console.error("Invalid leadData:", leadData, err);
+          return {};
         }
-        return lead.leadData || {};
       };
 
       if (searchText) {
@@ -215,11 +231,49 @@ const MasterLead = () => {
 
       filteredLeads = filterLeadsByDate(filteredLeads);
 
+      // const mappedLeads = filteredLeads.map((lead) => {
+      //   const leadData =
+      //     typeof lead.leadData === "string"
+      //       ? JSON.parse(lead.leadData)
+      //       : lead.leadData || {};
+
+      //   const assigneesArray = Array.isArray(lead.assignees)
+      //     ? lead.assignees
+      //     : [];
+
+      //   return {
+      //     ...lead,
+      //     checked: false,
+      //     firstName: leadData.first_name || leadData.firstName || "",
+      //     lastName: leadData.last_name || leadData.lastName || "",
+      //     state: leadData.state || "",
+      //     phoneNumber: leadData.phone_number || leadData.phoneNumber || "",
+      //     agentName: leadData.agent_name || leadData.agentName || "",
+      //     assignedTo: assigneesArray.length
+      //       ? assigneesArray
+      //           .map((a) => `${a.firstname} ${a.lastname}`)
+      //           .join(", ")
+      //       : "Unassigned",
+      //     isAssigned: assigneesArray.length > 0,
+      //   };
+      // });
+
       const mappedLeads = filteredLeads.map((lead) => {
-        const leadData =
-          typeof lead.leadData === "string"
-            ? JSON.parse(lead.leadData)
-            : lead.leadData || {};
+        let leadData = {};
+
+        try {
+          if (typeof lead.leadData === "string") {
+            leadData = JSON.parse(lead.leadData);
+          } else if (
+            typeof lead.leadData === "object" &&
+            lead.leadData !== null
+          ) {
+            leadData = lead.leadData;
+          }
+        } catch (err) {
+          console.error("Invalid leadData:", lead.leadData, err);
+          leadData = {};
+        }
 
         const assigneesArray = Array.isArray(lead.assignees)
           ? lead.assignees

@@ -19,6 +19,24 @@ const NotificationDropdown = ({ t }) => {
   const [socket, setSocket] = useState(null);
   const [userImage, setUserImage] = useState(null);
 
+  // const fetchNotifications = useCallback(async () => {
+  //   setLoading(true);
+  //   setError(null);
+  //   try {
+  //     const userId = localStorage.getItem("userId");
+  //     if (!userId) {
+  //       throw new Error("User ID not found");
+  //     }
+  //     const response = await getNotifications(userId, 1, 10);
+  //     setNotifications(Array.isArray(response.data) ? response.data : []);
+  //     setLoading(false);
+  //   } catch (error) {
+  //     setError(error.message);
+  //     setLoading(false);
+  //     console.error("Failed to fetch notifications:", error);
+  //   }
+  // }, []);
+
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -28,7 +46,15 @@ const NotificationDropdown = ({ t }) => {
         throw new Error("User ID not found");
       }
       const response = await getNotifications(userId, 1, 10);
-      setNotifications(Array.isArray(response.data) ? response.data : []);
+
+      // Handle both formats: paginated {data: []} and direct []
+      const notificationsData = Array.isArray(response)
+        ? response
+        : Array.isArray(response.data)
+        ? response.data
+        : [];
+
+      setNotifications(notificationsData);
       setLoading(false);
     } catch (error) {
       setError(error.message);
