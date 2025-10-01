@@ -374,7 +374,6 @@ export const fetchLeadsByAssigneeId = async (
     const token = localStorage.getItem("token");
     const url = new URL(`${API_URL}/getLeadsByAssigneeId/${assigneeId}`);
 
-    // Add query parameters
     url.searchParams.append("filterType", filterType);
     if (startDate) url.searchParams.append("startDate", startDate);
     if (endDate) url.searchParams.append("endDate", endDate);

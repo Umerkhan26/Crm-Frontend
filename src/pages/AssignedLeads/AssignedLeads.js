@@ -513,10 +513,11 @@ const UserLeads = ({ userId }) => {
         accessor: "leadData.state",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}

@@ -43,6 +43,26 @@ const CompactUserLeads = ({ userId }) => {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
+  const safeParse = (value, fallback = {}) => {
+    try {
+      if (!value) return fallback;
+
+      if (typeof value === "string") {
+        if (value.trim() === "[object Object]") return fallback;
+        return JSON.parse(value);
+      }
+
+      if (typeof value === "object") {
+        return value;
+      }
+
+      return fallback;
+    } catch (err) {
+      console.warn("Safe parse failed:", value, err);
+      return fallback;
+    }
+  };
+
   const getBackendFilterType = (frontendFilter) => {
     switch (frontendFilter) {
       case "today":
@@ -134,24 +154,41 @@ const CompactUserLeads = ({ userId }) => {
           allowedCampaignNames.includes(lead.campaignName)
         );
 
+        // const mappedLeads = filteredLeads.map((lead) => {
+        //   let assignees = [];
+
+        //   try {
+        //     assignees =
+        //       typeof lead.assignees === "string"
+        //         ? JSON.parse(lead.assignees)
+        //         : Array.isArray(lead.assignees)
+        //         ? lead.assignees
+        //         : [];
+        //   } catch (e) {
+        //     console.warn(
+        //       "Failed to parse assignees for lead ID",
+        //       lead.id,
+        //       lead.assignees
+        //     );
+        //   }
+
+        //   const userAssignee = assignees.find(
+        //     (a) => parseInt(a.userId || a.id) === parseInt(userId)
+        //   );
+
+        //   return {
+        //     ...lead,
+        //     assignees,
+        //     status: userAssignee?.status || "pending",
+        //     fullLeadData:
+        //       typeof lead.leadData === "string"
+        //         ? JSON.parse(lead.leadData)
+        //         : lead.leadData || {},
+        //   };
+        // });
+
         const mappedLeads = filteredLeads.map((lead) => {
-          let assignees = [];
-
-          try {
-            assignees =
-              typeof lead.assignees === "string"
-                ? JSON.parse(lead.assignees)
-                : Array.isArray(lead.assignees)
-                ? lead.assignees
-                : [];
-          } catch (e) {
-            console.warn(
-              "Failed to parse assignees for lead ID",
-              lead.id,
-              lead.assignees
-            );
-          }
-
+          const assignees = safeParse(lead.assignees, []);
           const userAssignee = assignees.find(
             (a) => parseInt(a.userId || a.id) === parseInt(userId)
           );
@@ -160,10 +197,7 @@ const CompactUserLeads = ({ userId }) => {
             ...lead,
             assignees,
             status: userAssignee?.status || "pending",
-            fullLeadData:
-              typeof lead.leadData === "string"
-                ? JSON.parse(lead.leadData)
-                : lead.leadData || {},
+            fullLeadData: safeParse(lead.leadData, {}),
           };
         });
 
@@ -223,10 +257,11 @@ const CompactUserLeads = ({ userId }) => {
         accessor: "leadData.agent_name",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}
@@ -242,10 +277,11 @@ const CompactUserLeads = ({ userId }) => {
         accessor: "leadData.first_name",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}
@@ -261,10 +297,11 @@ const CompactUserLeads = ({ userId }) => {
         accessor: "leadData.last_name",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}
@@ -281,10 +318,11 @@ const CompactUserLeads = ({ userId }) => {
         disableFilters: true,
         Cell: ({ row }) => {
           const [copied, setCopied] = useState(false);
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           const phone = leadData.phone_number || leadData.phoneNumber || "N/A";
 
           const handleClick = async (e) => {
@@ -320,10 +358,11 @@ const CompactUserLeads = ({ userId }) => {
         accessor: "leadData.state",
         disableFilters: true,
         Cell: ({ row }) => {
-          const leadData =
-            typeof row.original.leadData === "string"
-              ? JSON.parse(row.original.leadData)
-              : row.original.leadData || {};
+          // const leadData =
+          //   typeof row.original.leadData === "string"
+          //     ? JSON.parse(row.original.leadData)
+          //     : row.original.leadData || {};
+          const leadData = safeParse(row.original.leadData, {});
           return (
             <div
               style={{ cursor: "pointer" }}
