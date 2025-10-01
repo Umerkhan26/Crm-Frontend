@@ -188,12 +188,16 @@ const authProtectedRoutes = [
   {
     path: "/all-sales",
     component: <Sale />,
-    requiredPermissions: ["PRODUCT_SALE_GET_ALL", "PRODUCT_SALE_GET_BY_ID"],
+    requiredPermissions: [
+      "SALE_GET_ALL",
+      "SALE_GET_BY_ID",
+      "SALE_GET_BY_ASSIGNEE",
+    ],
   },
   {
     path: "/sale-details/:id",
     component: <SaleDetails />,
-    requiredPermissions: ["PRODUCT_SALE_GET_ALL", "PRODUCT_SALE_GET_BY_ID"],
+    requiredPermissions: ["PRODUCT_SALE_GET_ALL", "PRODUCT_"],
   },
   { path: "/all-referral", component: <MyReferrals /> },
   { path: "/allEmail", component: <EmailTemplate /> },

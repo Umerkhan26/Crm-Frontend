@@ -106,6 +106,7 @@ const componentPermissions = {
 
   Sales: {
     convertLead: false,
+    own: false,
     getAll: false,
     getById: false,
     // update: false,
@@ -228,6 +229,7 @@ const permissionMap = {
   "Sales.convertLead": "SALE_CONVERT_LEAD",
   "Sales.getAll": "SALE_GET_ALL",
   "Sales.getById": "SALE_GET_BY_ID",
+  "Sales.own": "SALE_GET_BY_ASSIGNEE",
   // "Sales.update": "SALE_UPDATE",
   "Sales.delete": "SALE_DELETE",
   // "Sales.create": "SALE_CREATE",
