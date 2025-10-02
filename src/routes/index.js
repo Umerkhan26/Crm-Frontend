@@ -70,7 +70,7 @@ import Sale from "../pages/Product/Sales";
 import AssignedLeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPage";
 import SaleDetails from "../pages/Product/SaleDetailsPage";
 import ClientLeadDetailPage from "../components/Modals/ClientLeadDetailPage";
-import MasterLeadDetailPage from "../components/Modals/LeadDetailModal";
+import MasterLeadDetailPage from "../components/Modals/LeadDetailPage";
 
 const authProtectedRoutes = [
   // Tables

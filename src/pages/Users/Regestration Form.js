@@ -163,8 +163,17 @@ const RegisterUser = () => {
     setSelectedRole(selectedOption);
   };
 
+  // const handleUserRoleChange = (selectedOption) => {
+  //   // setSelectedUserRole(selectedOption);
+  //   setSelectedUserRole(selectedOption ? selectedOption : null);
+  // };
+
   const handleUserRoleChange = (selectedOption) => {
-    setSelectedUserRole(selectedOption);
+    if (!selectedOption || selectedOption.value === null) {
+      setSelectedUserRole(null); // force clear
+    } else {
+      setSelectedUserRole(selectedOption);
+    }
   };
 
   const handleSubVendorChange = (selectedOptions) => {
@@ -215,9 +224,16 @@ const RegisterUser = () => {
       }
     }
 
-    if (payload.userrole) {
+    // if (payload.userrole) {
+    //   formPayload.append("userrole", payload.userrole);
+    // }
+
+    if (payload.userrole === null) {
+      formPayload.append("userrole", "null"); // send string "null"
+    } else {
       formPayload.append("userrole", payload.userrole);
     }
+
     // ONLY append userImage if it's a File (new image selected)
     if (formData.userImage instanceof File) {
       formPayload.append(
