@@ -56,7 +56,6 @@ const Notification = ({ t }) => {
         const limit = 15;
         // 👇 Ensure backend accepts page + limit
         const response = await getNotifications(userId, pageNum, limit);
-        console.log("notication", response);
 
         let data = Array.isArray(response) ? response : response.data || [];
         let total = Number.isFinite(response.total) ? response.total : null;

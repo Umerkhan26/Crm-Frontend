@@ -9,10 +9,6 @@ export const getMenuItems = (user) => {
   const permissions = getEffectivePermissions(user);
   // In your getMenuItems function, before filtering
   console.log("User permissions:", permissions);
-  console.log(
-    "Checking for assignedLead:getByAssignee:",
-    hasAnyPermission(user, ["assignedLead:getByAssignee"], isAdminUser)
-  );
 
   const menuItems = [
     {

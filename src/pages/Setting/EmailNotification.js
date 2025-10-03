@@ -173,8 +173,6 @@ const EmailNotification = () => {
           canSend: permData.canSend,
           allowedRoles: permData.allowedRoles || [],
         });
-
-        console.log("updated email ", response);
       }
 
       toast.success("Permissions updated successfully!");

@@ -103,7 +103,6 @@ const ClientLeadDetailPage = () => {
         }
 
         const response = await getAllClientLeads(1, 10, orderId);
-        console.log("clientlead response", response);
         const leads = Array.isArray(response.data) ? response.data : [];
         const leadData = leads.find((lead) => lead.id === parseInt(leadId));
 
@@ -135,7 +134,6 @@ const ClientLeadDetailPage = () => {
           setActivitiesLoading(true);
           try {
             const activities = await getClientLeadActivitiesByLeadId(leadId);
-            console.log("ClientLead activities:", activities);
             setActivities(Array.isArray(activities) ? activities : []);
           } catch (err) {
             setActivitiesError(err.message || "Failed to fetch activities");
@@ -171,9 +169,7 @@ const ClientLeadDetailPage = () => {
         notebleType: "client_lead",
       };
 
-      console.log("Attempting to add note with data:", noteData);
       const response = await addNote(noteData);
-      console.log("Add note response:", response);
 
       const addedNote = response.note || response.data || response;
 
@@ -203,7 +199,6 @@ const ClientLeadDetailPage = () => {
           try {
             setActivitiesLoading(true);
             const activities = await getClientLeadActivitiesByLeadId(leadId);
-            console.log("Refetched activities after note:", activities);
             setActivities(Array.isArray(activities) ? activities : []);
           } catch (err) {
             setActivitiesError(err.message || "Failed to fetch activities");
@@ -275,7 +270,6 @@ const ClientLeadDetailPage = () => {
             const activitiesData = await getClientLeadActivitiesByLeadId(
               leadId
             );
-            console.log("ClientLead activities:", activitiesData);
             setActivities(Array.isArray(activitiesData) ? activitiesData : []);
           } catch (err) {
             setActivitiesError(err.message || "Failed to fetch activities");
@@ -346,7 +340,6 @@ const ClientLeadDetailPage = () => {
             const activitiesData = await getClientLeadActivitiesByLeadId(
               leadId
             );
-            console.log("ClientLead activities:", activitiesData);
             setActivities(Array.isArray(activitiesData) ? activitiesData : []);
           } catch (err) {
             setActivitiesError(err.message || "Failed to fetch activities");
@@ -493,7 +486,6 @@ const ClientLeadDetailPage = () => {
         try {
           setActivitiesLoading(true);
           const activitiesData = await getClientLeadActivitiesByLeadId(leadId);
-          console.log("ClientLead activities:", activitiesData);
           setActivities(Array.isArray(activitiesData) ? activitiesData : []);
         } catch (err) {
           setActivitiesError(err.message || "Failed to fetch activities");

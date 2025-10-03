@@ -153,6 +153,7 @@ const MasterLead = () => {
 
       if (selectedCampaign) {
         response = await fetchLeadsByCampaign(selectedCampaign);
+
         if (!response || !response.length) {
           updateState({
             leads: [],
@@ -169,7 +170,6 @@ const MasterLead = () => {
         }
       } else if (activeFilter === "assigned") {
         response = await fetchAllLeadsWithAssignee();
-        console.log("assineee lead", response);
       } else if (activeFilter === "unassigned") {
         response = await fetchUnassignedLeads();
       } else {
@@ -280,25 +280,28 @@ const MasterLead = () => {
       // });
 
       const mappedLeads = filteredLeads.map((lead) => {
-        console.log("🔍 Processing lead from service:", lead.id, {
-          hasFullLeadData: !!lead.fullLeadData,
-          hasAssignees: !!lead.assignees,
-          assigneesType: typeof lead.assignees,
-          isAssigned: lead.isAssigned,
-          assignedTo: lead.assignedTo,
-        });
+        // Parse leadData safely
+        let leadData = {};
+        if (typeof lead.leadData === "string") {
+          try {
+            leadData = JSON.parse(lead.leadData);
+          } catch {
+            leadData = {};
+          }
+        } else if (
+          typeof lead.leadData === "object" &&
+          lead.leadData !== null
+        ) {
+          leadData = lead.leadData;
+        }
 
-        // ✅ Since service functions now handle parsing, use the pre-parsed data
-        const leadData = lead.fullLeadData || {};
         const assigneesArray = Array.isArray(lead.assignees)
           ? lead.assignees
           : [];
 
-        // ✅ Use the data that's already processed by the service
         return {
           ...lead,
           checked: false,
-          // Use the flattened properties from service first, fallback to parsed data
           firstName:
             lead.firstName || leadData.first_name || leadData.firstName || "",
           lastName:
@@ -311,7 +314,6 @@ const MasterLead = () => {
             "",
           agentName:
             lead.agentName || leadData.agent_name || leadData.agentName || "",
-          // Use assignedTo from service if available, otherwise generate it
           assignedTo:
             lead.assignedTo ||
             (assigneesArray.length
@@ -323,13 +325,13 @@ const MasterLead = () => {
                   )
                   .join(", ")
               : "Unassigned"),
-          // Use isAssigned from service if available, otherwise calculate it
           isAssigned:
             lead.isAssigned !== undefined
               ? lead.isAssigned
               : assigneesArray.length > 0,
         };
       });
+
       updateState({
         leads: mappedLeads,
         loading: false,

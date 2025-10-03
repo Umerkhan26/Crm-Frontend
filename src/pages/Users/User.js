@@ -64,7 +64,6 @@ const AllUsers = () => {
   // Fetch data (unchanged)
   useEffect(() => {
     if (!currentUser) {
-      console.log("No currentUser, skipping fetchData");
       setLoading(false);
       return;
     }
@@ -113,8 +112,6 @@ const AllUsers = () => {
           limit: pageSize,
           search: searchText,
         });
-
-        console.log("User Response", usersResponse);
       } else {
         throw new Error("Insufficient permissions to fetch user data");
       }

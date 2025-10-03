@@ -132,15 +132,6 @@ const ConvertToSaleModal = ({
       price: saleItems[0]?.price ? Number(saleItems[0].price) : 0,
     };
 
-    // Log the payload before sending
-    console.log("Submitting sale conversion with payload:", {
-      ...payload,
-      products: payload.products.map((p) => ({
-        ...p,
-        price: `$${p.price.toFixed(2)}`,
-      })),
-    });
-
     try {
       setSubmitting(true);
       const result = await convertLeadToSale(payload);

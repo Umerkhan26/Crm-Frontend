@@ -196,8 +196,6 @@ const NewOrder = () => {
   // Replace the useEffect that sets form data with this:
   useEffect(() => {
     if (editData && campaignOptions.length > 0) {
-      console.log("Setting form data for editing...");
-
       // Parse vendor and client data - handle both string and object formats
       let vendorData = null;
       let clientData = null;
@@ -246,14 +244,6 @@ const NewOrder = () => {
           : "",
         vendor: vendorOption,
         assignedClient: clientOption,
-      });
-
-      console.log("Form data set:", {
-        vendor: vendorOption,
-        client: clientOption,
-        campaign: campaignOptions.find(
-          (opt) => opt.value == editData.campaign_id
-        ),
       });
     }
   }, [editData, campaignOptions, vendorOptions, clientOptions]);
@@ -340,13 +330,11 @@ const NewOrder = () => {
         // Update existing order
         const result = await updateOrder(editData.id, payload);
         toast.success("Order updated successfully!");
-        console.log("Updated Order:", result);
 
         navigate("/order-index");
       } else {
         const result = await createOrder(payload);
         toast.success("Order created successfully!");
-        console.log("Created Order:", result);
 
         setFormData({
           agent: "",

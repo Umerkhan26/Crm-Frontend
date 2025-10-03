@@ -65,7 +65,6 @@ const EmailTemplate = () => {
       try {
         const data = await getEmailTemplates();
         setTemplatesData(data);
-        console.log("EMAIL TEMPLETE", data);
       } catch (err) {
         console.error("Failed to fetch templates:", err);
       } finally {

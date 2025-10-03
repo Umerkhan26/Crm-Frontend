@@ -1,5 +1,4 @@
 export const API_URL = process.env.REACT_APP_FRONTEND_BASE_URL;
-console.log("API_URL is:", API_URL);
 
 export const registerUser = async (formData) => {
   const token = localStorage.getItem("token");

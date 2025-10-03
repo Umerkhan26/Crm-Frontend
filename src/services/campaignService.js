@@ -117,11 +117,7 @@ export const updateCampaign = async (id, data) => {
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
-  console.log(
-    "Sending payload for campaign ID:",
-    id,
-    JSON.stringify(data, null, 2)
-  );
+
   try {
     const response = await fetch(`${API_URL}/updateCampaignById/${id}`, {
       method: "PUT",

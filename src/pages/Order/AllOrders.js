@@ -211,7 +211,7 @@ const Allorders = () => {
       }
 
       const response = await fetchFunction(page, limit, search);
-      console.log("all order", response);
+
       setOrdersData(response.data);
       setPagination((prev) => ({
         ...prev,
@@ -450,7 +450,6 @@ const Allorders = () => {
 
   useEffect(() => {
     if (ordersData?.length) {
-      console.log("🔍 Sample Order:", ordersData[0]);
     }
   }, [ordersData]);
 

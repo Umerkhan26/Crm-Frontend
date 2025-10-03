@@ -38,8 +38,6 @@ const AllRole = () => {
         search: searchText,
       });
 
-      console.log("all Roles", response);
-
       if (!response.success) {
         throw new Error(response.message || "Failed to fetch roles");
       }

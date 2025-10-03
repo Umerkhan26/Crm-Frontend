@@ -93,7 +93,6 @@ const ClientLeads = () => {
     const fetchData = async () => {
       try {
         const res = await fetchVendorsAndClients();
-        console.log("API users:", res.data);
 
         if (res.success && res.data) {
           // const clientList = res.data.filter(

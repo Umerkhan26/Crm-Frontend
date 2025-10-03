@@ -187,7 +187,6 @@ const AssignedLeadDetailPage = () => {
         // Fetch lead activities
         setActivitiesLoading(true);
         const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
-        console.log("Lead activity", activitiesResponse);
 
         const fetchedActivities = Array.isArray(activitiesResponse)
           ? activitiesResponse
@@ -227,8 +226,6 @@ const AssignedLeadDetailPage = () => {
         userId: currentUser.id,
       };
 
-      console.log("Submitting Note:", noteData);
-
       const response = await addNote(noteData);
       const addedNote = response.note || response.data || response;
 
@@ -262,7 +259,6 @@ const AssignedLeadDetailPage = () => {
         try {
           setActivitiesLoading(true);
           const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
-          console.log("Lead Activity", activitiesResponse);
           const fetchedActivities =
             activitiesResponse.data || activitiesResponse.activities || [];
           setActivities(fetchedActivities);
@@ -326,7 +322,6 @@ const AssignedLeadDetailPage = () => {
         try {
           setActivitiesLoading(true);
           const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
-          console.log("Lead activity", activitiesResponse);
           const fetchedActivities =
             activitiesResponse.data || activitiesResponse.activities || [];
           setActivities(fetchedActivities);

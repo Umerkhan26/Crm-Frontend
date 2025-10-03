@@ -477,7 +477,7 @@ const CreateRole = () => {
           name: state.newRoleName,
           permissions: permissionIds,
         });
-        console.log("first", response);
+
         toast.success("Role created successfully!");
         updateState({
           newRoleName: "",

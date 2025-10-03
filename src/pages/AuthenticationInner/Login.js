@@ -30,7 +30,6 @@ class Login extends Component {
   }
 
   handleSubmit = (data) => {
-    console.log("Login Data:", data);
     // Here, you can add any login action such as calling an API
   };
 

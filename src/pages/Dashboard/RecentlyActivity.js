@@ -22,8 +22,6 @@ const RecentlyActivity = ({ userId, userrole }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("🟢 RecentlyActivity props:", { userId, userrole });
-
     const fetchActivities = async () => {
       try {
         let res;
@@ -32,7 +30,7 @@ const RecentlyActivity = ({ userId, userrole }) => {
         } else {
           res = await getActivitiesByUserId(userId, { page: 1, limit: 40 });
         }
-        console.log("📌 API Response:", res);
+
         setActivities(res?.data || []);
       } catch (err) {
         setError(err.message);

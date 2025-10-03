@@ -225,7 +225,7 @@ class EcommerceProducts extends Component {
   render() {
     const { history } = this.props
     const { discountData, products, page, totalPage } = this.state
-    console.log("products", products)
+   
     return (
     <React.Fragment>
       <div className="page-content">

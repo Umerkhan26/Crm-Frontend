@@ -1,5 +1,5 @@
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
+import axios from "axios";
+import MockAdapter from "axios-mock-adapter";
 import * as url from "../url_helper";
 
 import {
@@ -14,20 +14,24 @@ import {
   chats,
   groups,
   messages,
-  contacts
+  contacts,
 } from "../../common/data";
 
 let users = [
-  { id: 1, username: 'admin', password: '123456', email: 'admin@themesdesign.in' }
+  {
+    id: 1,
+    username: "admin",
+    password: "123456",
+    email: "admin@themesdesign.in",
+  },
 ];
 
 const fakeBackend = () => {
   // This sets the mock adapter on the default instance
   var mock = new MockAdapter(axios);
 
-  mock.onPost('/post-register').reply(function (config) {
-
-    const user = JSON.parse(config['data']);
+  mock.onPost("/post-register").reply(function (config) {
+    const user = JSON.parse(config["data"]);
     users.push(user);
 
     return new Promise(function (resolve, reject) {
@@ -37,22 +41,27 @@ const fakeBackend = () => {
     });
   });
 
-  mock.onPost('/post-login').reply(function (config) {
-    const user = JSON.parse(config['data']);
-    const validUser = users.filter(usr => usr.email === user.username && usr.password === user.password);
+  mock.onPost("/post-login").reply(function (config) {
+    const user = JSON.parse(config["data"]);
+    const validUser = users.filter(
+      (usr) => usr.email === user.username && usr.password === user.password
+    );
 
     return new Promise(function (resolve, reject) {
       setTimeout(function () {
-        if (validUser['length'] === 1) {
+        if (validUser["length"] === 1) {
           resolve([200, validUser[0]]);
         } else {
-          reject([400, "Username and password are invalid. Please enter correct username and password"]);
+          reject([
+            400,
+            "Username and password are invalid. Please enter correct username and password",
+          ]);
         }
       });
     });
   });
 
-  mock.onPost('/forget-pwd').reply(function (config) {
+  mock.onPost("/forget-pwd").reply(function (config) {
     // User needs to check that user is eXist or not and send mail for Reset New password
 
     return new Promise(function (resolve, reject) {
@@ -60,98 +69,95 @@ const fakeBackend = () => {
         resolve([200, "Check you mail and reset your password."]);
       });
     });
-
   });
   mock.onGet(url.GET_EVENTS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (events) {
           // Passing fake JSON data as response
-          resolve([200, events])
+          resolve([200, events]);
         } else {
-          reject([400, "Cannot get events"])
+          reject([400, "Cannot get events"]);
         }
-      })
-    })
-  })
-
-  mock.onPost(url.ADD_NEW_EVENT).reply(event => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (event && event.data) {
-          // Passing fake JSON data as response
-          resolve([200, event.data])
-        } else {
-          reject([400, "Cannot add event"])
-        }
-      })
-    })
+      });
+    });
   });
 
-  mock.onPut(url.UPDATE_EVENT).reply(event => {
+  mock.onPost(url.ADD_NEW_EVENT).reply((event) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (event && event.data) {
           // Passing fake JSON data as response
-          resolve([200, event.data])
+          resolve([200, event.data]);
         } else {
-          reject([400, "Cannot update event"])
+          reject([400, "Cannot add event"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
-  mock.onDelete(url.DELETE_EVENT).reply(config => {
+  mock.onPut(url.UPDATE_EVENT).reply((event) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (event && event.data) {
+          // Passing fake JSON data as response
+          resolve([200, event.data]);
+        } else {
+          reject([400, "Cannot update event"]);
+        }
+      });
+    });
+  });
+
+  mock.onDelete(url.DELETE_EVENT).reply((config) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (config && config.headers) {
           // Passing fake JSON data as response
-          resolve([200, config.headers.event])
+          resolve([200, config.headers.event]);
         } else {
-          reject([400, "Cannot delete event"])
+          reject([400, "Cannot delete event"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_CATEGORIES).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (calenderDefaultCategories) {
           // Passing fake JSON data as response
-          resolve([200, calenderDefaultCategories])
+          resolve([200, calenderDefaultCategories]);
         } else {
-          reject([400, "Cannot get categories"])
+          reject([400, "Cannot get categories"]);
         }
-      })
-    })
+      });
+    });
   });
-
 
   mock.onGet(url.GET_PRODUCTS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (productsData) {
           // Passing fake JSON data as response
-          resolve([200, productsData])
+          resolve([200, productsData]);
         } else {
-          reject([400, "Cannot get products"])
+          reject([400, "Cannot get products"]);
         }
-      })
-    })
+      });
+    });
   });
 
-  mock.onGet(new RegExp(`${url.GET_PRODUCT_DETAIL}/*`)).reply(config => {
+  mock.onGet(new RegExp(`${url.GET_PRODUCT_DETAIL}/*`)).reply((config) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (productsData) {
           const { params } = config;
           const product = productsData.find(
-            product => product.id.toString() === params.id.toString()
+            (product) => product.id.toString() === params.id.toString()
           );
           if (product) {
             resolve([200, { ...product, comments }]);
-            console.log("Fake product found:", product);
           } else {
             reject([404, "Product not found"]);
           }
@@ -161,129 +167,127 @@ const fakeBackend = () => {
       }, 1000); // Adjust the timeout as necessary
     });
   });
-  
 
   mock.onGet(url.GET_ORDERS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (orders) {
           // Passing fake JSON data as response
-          resolve([200, orders])
+          resolve([200, orders]);
         } else {
-          reject([400, "Cannot get orders"])
+          reject([400, "Cannot get orders"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
-    mock.onGet(url.GET_CART_DATA).reply(() => {
+  mock.onGet(url.GET_CART_DATA).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (cartData) {
           // Passing fake JSON data as response
-          resolve([200, cartData])
+          resolve([200, cartData]);
         } else {
-          reject([400, "Cannot get cart data"])
+          reject([400, "Cannot get cart data"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_CUSTOMERS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (customerData) {
           // Passing fake JSON data as response
-          resolve([200, customerData])
+          resolve([200, customerData]);
         } else {
-          reject([400, "Cannot get customers data"])
+          reject([400, "Cannot get customers data"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_SHOPS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (shops) {
           // Passing fake JSON data as response
-          resolve([200, shops])
+          resolve([200, shops]);
         } else {
-          reject([400, "Cannot get shops data"])
+          reject([400, "Cannot get shops data"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_CHATS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (chats) {
           // Passing fake JSON data as response
-          resolve([200, chats])
+          resolve([200, chats]);
         } else {
-          reject([400, "Cannot get chats"])
+          reject([400, "Cannot get chats"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_GROUPS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (groups) {
           // Passing fake JSON data as response
-          resolve([200, groups])
+          resolve([200, groups]);
         } else {
-          reject([400, "Cannot get groups"])
+          reject([400, "Cannot get groups"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
   mock.onGet(url.GET_CONTACTS).reply(() => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (contacts) {
           // Passing fake JSON data as response
-          resolve([200, contacts])
+          resolve([200, contacts]);
         } else {
-          reject([400, "Cannot get contacts"])
+          reject([400, "Cannot get contacts"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
-  mock.onGet(new RegExp(`${url.GET_MESSAGES}/*`)).reply(config => {
+  mock.onGet(new RegExp(`${url.GET_MESSAGES}/*`)).reply((config) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (messages) {
           // Passing fake JSON data as response
-          const { params } = config
+          const { params } = config;
           const filteredMessages = messages.filter(
-            msg => msg.roomId === params.roomId
-          )
-          resolve([200, filteredMessages])
+            (msg) => msg.roomId === params.roomId
+          );
+          resolve([200, filteredMessages]);
         } else {
-          reject([400, "Cannot get messages"])
+          reject([400, "Cannot get messages"]);
         }
-      })
-    })
-  })
+      });
+    });
+  });
 
-  mock.onPost(url.ADD_MESSAGE).reply(config => {
+  mock.onPost(url.ADD_MESSAGE).reply((config) => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (config.data) {
           // Passing fake JSON data as response
-          resolve([200, config.data])
+          resolve([200, config.data]);
         } else {
-          reject([400, "Cannot add message"])
+          reject([400, "Cannot add message"]);
         }
-      })
-    })
-  })
-
-}
+      });
+    });
+  });
+};
 
 export default fakeBackend;

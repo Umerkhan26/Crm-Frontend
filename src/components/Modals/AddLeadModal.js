@@ -90,7 +90,6 @@ const AddLeadModal = ({ isOpen, toggle, onSubmit, selectedOrder }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log("selectedOrder:", selectedOrder);
 
     if (!selectedOrder || !selectedOrder.id || !selectedOrder.campaign_id) {
       toast.error("Invalid order data. Please select a valid order.");

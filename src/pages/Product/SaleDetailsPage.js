@@ -188,7 +188,6 @@ const SaleDetails = () => {
     try {
       setInvoiceLoading(true);
       const invoiceData = await fetchInvoiceByLeadId(sale.leadId);
-      console.log("Invoice data:", JSON.stringify(invoiceData, null, 2));
 
       if (!invoiceData.success || !invoiceData.data) {
         throw new Error("Invalid invoice data received");

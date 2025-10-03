@@ -147,10 +147,6 @@ export const getMenuItems = (user) => {
   const isAdminUser = isAdmin(user);
   const permissions = getEffectivePermissions(user);
   console.log("User permissions:", permissions);
-  console.log(
-    "Checking for assigngetByAssigneeedLead::",
-    hasAnyPermission(user, ["assignedLead:getByAssignee"], isAdminUser)
-  );
 
   const menuItems = [
     {

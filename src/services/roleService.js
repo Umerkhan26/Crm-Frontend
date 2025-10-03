@@ -40,7 +40,6 @@ export const createRole = async (payload) => {
 export const updateRolePermissions = async (roleId, permissions) => {
   try {
     const token = localStorage.getItem("token");
-    console.log("Token:", token); // Debug line
 
     const response = await fetch(`${API_URL}/updateRole/${roleId}`, {
       method: "PUT",

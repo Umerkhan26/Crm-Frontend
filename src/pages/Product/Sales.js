@@ -49,19 +49,11 @@ const Sale = () => {
         search: searchText,
       });
 
-      console.log("Raw API response:", response);
-
       // Handle the normalized response format
       const records = response.data || [];
       const totalItems = response.totalItems || 0;
       const totalPages = response.totalPages || 1;
       const currentPage = response.currentPage || 1;
-
-      console.log(
-        "Initial records:",
-        records.length,
-        JSON.stringify(records, null, 2)
-      );
 
       // Process records (no filtering needed as backend handles it)
       const processedRecords = records.map((sale, index) => {
@@ -110,11 +102,6 @@ const Sale = () => {
         };
       });
 
-      console.log(
-        "Processed records:",
-        JSON.stringify(processedRecords, null, 2)
-      );
-
       setSales(processedRecords);
       setPagination((prev) => ({
         ...prev,
@@ -134,7 +121,6 @@ const Sale = () => {
       });
     } finally {
       setIsLoading(false);
-      console.log("isLoading set to:", false);
     }
   }, [pagination.currentPage, pagination.pageSize, isAdminUser, searchText]);
   useEffect(() => {

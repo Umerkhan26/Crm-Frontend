@@ -108,10 +108,8 @@ const AllClient = () => {
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you would typically send the data to your API
-    // console.log("Form submitted:", formData);
+
     if (selectedFile) {
-      console.log("File selected:", selectedFile.name);
     }
     toggleModal();
   };

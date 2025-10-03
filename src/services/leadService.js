@@ -146,7 +146,6 @@ export const updateLead = async (id, updatedData) => {
     });
 
     const responseData = await response.json();
-    console.log("Update lead response:", responseData);
 
     if (!response.ok) {
       throw new Error(responseData.message || "Failed to update lead");

@@ -41,7 +41,7 @@ const AppRoute = ({
 
   if (!hasAccess) {
     console.warn("Access denied. Missing permissions:", requiredPermissions);
-    console.log("User permissions:", user.role.permissions);
+
     return <Navigate to="/dashboard" replace />;
   }
 

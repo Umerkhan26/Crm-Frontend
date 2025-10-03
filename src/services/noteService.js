@@ -10,8 +10,6 @@ const handleResponse = async (response) => {
 
 export const addNote = async (noteData) => {
   try {
-    console.log("Sending note data:", noteData); // Debug log
-
     const response = await fetch(`${API_URL}/add`, {
       method: "POST",
       headers: {
