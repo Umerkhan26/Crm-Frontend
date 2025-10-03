@@ -437,7 +437,6 @@ const MasterLead = () => {
       updateState({
         leads: state.leads.filter((lead) => lead.id !== leadId),
       });
-      toast.success("Lead deleted successfully");
     };
 
     confirmDelete(deleteFn, null, "lead");
