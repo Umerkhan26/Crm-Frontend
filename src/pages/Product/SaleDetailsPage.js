@@ -156,6 +156,29 @@ const SaleDetails = () => {
     getSaleDetails();
   }, [id, navigate]);
 
+  // const handleViewInvoice = async () => {
+  //   if (!sale?.leadId) {
+  //     toast.error("No lead associated with this sale");
+  //     return;
+  //   }
+
+  //   try {
+  //     setInvoiceLoading(true);
+  //     const invoiceData = await fetchInvoiceByLeadId(sale.leadId);
+  //     console.log("Invoice data:", JSON.stringify(invoiceData, null, 2)); // Debug log
+  //     if (!invoiceData.success || !invoiceData.data) {
+  //       throw new Error("Invalid invoice data received");
+  //     }
+  //     setInvoice(invoiceData.data);
+  //     setInvoiceModalOpen(true);
+  //   } catch (error) {
+  //     console.error("Error in handleViewInvoice:", error);
+  //     toast.error(`Failed to fetch invoice: ${error.message}`);
+  //   } finally {
+  //     setInvoiceLoading(false);
+  //   }
+  // };
+
   const handleViewInvoice = async () => {
     if (!sale?.leadId) {
       toast.error("No lead associated with this sale");
@@ -165,11 +188,48 @@ const SaleDetails = () => {
     try {
       setInvoiceLoading(true);
       const invoiceData = await fetchInvoiceByLeadId(sale.leadId);
-      console.log("Invoice data:", JSON.stringify(invoiceData, null, 2)); // Debug log
+      console.log("Invoice data:", JSON.stringify(invoiceData, null, 2));
+
       if (!invoiceData.success || !invoiceData.data) {
         throw new Error("Invalid invoice data received");
       }
-      setInvoice(invoiceData.data);
+
+      // Parse leadData if it's a string, otherwise use as-is
+      let parsedInvoiceData = { ...invoiceData.data };
+
+      if (parsedInvoiceData.lead?.leadData) {
+        if (typeof parsedInvoiceData.lead.leadData === "string") {
+          try {
+            parsedInvoiceData.lead.leadData = JSON.parse(
+              parsedInvoiceData.lead.leadData
+            );
+          } catch (parseError) {
+            console.warn(
+              "Failed to parse leadData as JSON, using as string:",
+              parseError
+            );
+          }
+        }
+        // If it's already an object, leave it as-is
+      }
+
+      // Also handle sale data if needed
+      if (parsedInvoiceData.sale?.Lead?.leadData) {
+        if (typeof parsedInvoiceData.sale.Lead.leadData === "string") {
+          try {
+            parsedInvoiceData.sale.Lead.leadData = JSON.parse(
+              parsedInvoiceData.sale.Lead.leadData
+            );
+          } catch (parseError) {
+            console.warn(
+              "Failed to parse sale.Lead.leadData as JSON:",
+              parseError
+            );
+          }
+        }
+      }
+
+      setInvoice(parsedInvoiceData);
       setInvoiceModalOpen(true);
     } catch (error) {
       console.error("Error in handleViewInvoice:", error);
@@ -842,12 +902,16 @@ const SaleDetails = () => {
                         Bill To:
                       </p>
                       <p style={{ fontSize: "10px", marginBottom: "2px" }}>
-                        {JSON.parse(invoice.lead.leadData).first_name || "N/A"}{" "}
-                        {JSON.parse(invoice.lead.leadData).last_name || "N/A"}
+                        {/* {JSON.parse(invoice.lead.leadData).first_name || "N/A"}{" "}
+                        {JSON.parse(invoice.lead.leadData).last_name || "N/A"} */}
+                        {invoice.lead.leadData.first_name || "N/A"}{" "}
+                        {invoice.lead.leadData.last_name || "N/A"}
                       </p>
                       <p style={{ fontSize: "10px", marginBottom: "2px" }}>
                         {invoice.lead?.leadData
-                          ? JSON.parse(invoice.lead.leadData).phone_number ||
+                          ? // ? JSON.parse(invoice.lead.leadData).phone_number ||
+                            //   "+932233443443"
+                            invoice.lead.leadData.phone_number ||
                             "+932233443443"
                           : "+932233443443"}
                       </p>
@@ -862,7 +926,8 @@ const SaleDetails = () => {
                       </p>
                       <p style={{ fontSize: "10px", marginBottom: "0" }}>
                         {invoice.lead?.leadData
-                          ? JSON.parse(invoice.lead.leadData).email ||
+                          ? // ? JSON.parse(invoice.lead.leadData).email ||
+                            invoice.lead.leadData.email ||
                             "Paul@x-tremesteelfoundationrepair.com"
                           : "Paul@x-tremesteelfoundationrepair.com"}
                       </p>

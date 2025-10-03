@@ -204,6 +204,142 @@ export const assignLeadToUser = async (leadId, userId) => {
   }
 };
 
+// export const fetchAllLeadsWithAssignee = async () => {
+//   const token = getAuthToken();
+//   try {
+//     const response = await fetch(`${API_URL}/getLeadsWithAssignee`, {
+//       method: "GET",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       throw new Error(
+//         `Failed to fetch leads with assignees: ${response.statusText} - ${errorText}`
+//       );
+//     }
+
+//     const result = await response.json();
+
+//     if (!Array.isArray(result.data)) {
+//       throw new Error("Invalid response format");
+//     }
+
+//     const leads = result.data.map((lead) => {
+//       const parsedData = JSON.parse(lead.leadData);
+//       const assigneesArray = (() => {
+//         try {
+//           return Array.isArray(lead.assignees)
+//             ? lead.assignees
+//             : JSON.parse(lead.assignees || "[]");
+//         } catch {
+//           return [];
+//         }
+//       })();
+
+//       return {
+//         id: lead.id,
+//         campaignName: lead.campaignName,
+//         campaignType: lead.campaignName,
+//         leadData: lead.leadData,
+//         fullLeadData: parsedData,
+//         assigneeId: lead.assignees.userId,
+//         assignees: lead.assignees,
+//         createdAt: lead.createdAt,
+//         updatedAt: lead.updatedAt,
+//         checked: false,
+//         // Flattened properties
+//         agentName: parsedData.agent_name,
+//         firstName: parsedData.first_name,
+//         lastName: parsedData.last_name,
+//         phoneNumber: parsedData.phone_number,
+//         state: parsedData.state,
+//         date: parsedData.date,
+//         // Assignment status
+//         isAssigned: assigneesArray.length > 0,
+//         assignedTo: assigneesArray.length
+//           ? assigneesArray
+//               .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+//               .join(", ")
+//           : "Unassigned",
+//       };
+//     });
+
+//     return {
+//       data: leads,
+//       totalPages: 1,
+//       totalItems: leads.length,
+//       currentPage: 1,
+//     };
+//   } catch (error) {
+//     console.error("Error fetching leads with assignees:", error);
+//     throw error;
+//   }
+// };
+
+// export const fetchUnassignedLeads = async () => {
+//   const token = getAuthToken();
+//   try {
+//     const response = await fetch(`${API_URL}/getLeadsWithUnassigned`, {
+//       method: "GET",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       throw new Error(
+//         `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
+//       );
+//     }
+
+//     const result = await response.json();
+
+//     if (!Array.isArray(result.data)) {
+//       throw new Error("Invalid response format");
+//     }
+
+//     const leads = result.data.map((lead) => {
+//       const parsedData = JSON.parse(lead.leadData);
+//       return {
+//         id: lead.id,
+//         campaignName: lead.campaignName,
+//         campaignType: lead.campaignName,
+//         leadData: lead.leadData,
+//         fullLeadData: parsedData,
+//         assigneeId: lead.assigneeId,
+//         assignees: lead.assignees,
+//         createdAt: lead.createdAt,
+//         updatedAt: lead.updatedAt,
+//         checked: false,
+//         agentName: parsedData.agent_name,
+//         firstName: parsedData.first_name,
+//         lastName: parsedData.last_name,
+//         phoneNumber: parsedData.phone_number,
+//         state: parsedData.state,
+//         date: parsedData.date,
+//         isAssigned: !!lead.assigneeId,
+//         assignedTo: lead.assignee ? lead.assignee.firstname : "Unassigned",
+//       };
+//     });
+
+//     return {
+//       data: leads,
+//       totalPages: 1,
+//       totalItems: leads.length,
+//       currentPage: 1,
+//     };
+//   } catch (error) {
+//     console.error("Error fetching unassigned leads:", error);
+//     throw error;
+//   }
+// };
+
 export const fetchAllLeadsWithAssignee = async () => {
   const token = getAuthToken();
   try {
@@ -229,13 +365,44 @@ export const fetchAllLeadsWithAssignee = async () => {
     }
 
     const leads = result.data.map((lead) => {
-      const parsedData = JSON.parse(lead.leadData);
+      // ✅ SAFE PARSE: Handle both string and object leadData
+      const parsedData = (() => {
+        try {
+          if (typeof lead.leadData === "string") {
+            return JSON.parse(lead.leadData);
+          } else if (
+            typeof lead.leadData === "object" &&
+            lead.leadData !== null
+          ) {
+            return lead.leadData;
+          } else {
+            return {};
+          }
+        } catch (error) {
+          console.warn("Failed to parse leadData for lead:", lead.id, error);
+          return {};
+        }
+      })();
+
+      // ✅ SAFE PARSE: Handle assignees
       const assigneesArray = (() => {
         try {
-          return Array.isArray(lead.assignees)
-            ? lead.assignees
-            : JSON.parse(lead.assignees || "[]");
-        } catch {
+          if (Array.isArray(lead.assignees)) {
+            return lead.assignees;
+          } else if (typeof lead.assignees === "string") {
+            const trimmed = lead.assignees.trim();
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+              return JSON.parse(trimmed);
+            } else if (trimmed === "[object Object]") {
+              return [];
+            } else {
+              return [];
+            }
+          } else {
+            return [];
+          }
+        } catch (error) {
+          console.warn("Failed to parse assignees for lead:", lead.id, error);
           return [];
         }
       })();
@@ -246,18 +413,18 @@ export const fetchAllLeadsWithAssignee = async () => {
         campaignType: lead.campaignName,
         leadData: lead.leadData,
         fullLeadData: parsedData,
-        assigneeId: lead.assignees.userId,
-        assignees: lead.assignees,
+        assigneeId: lead.assigneeId,
+        assignees: assigneesArray,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
         checked: false,
         // Flattened properties
-        agentName: parsedData.agent_name,
-        firstName: parsedData.first_name,
-        lastName: parsedData.last_name,
-        phoneNumber: parsedData.phone_number,
-        state: parsedData.state,
-        date: parsedData.date,
+        agentName: parsedData.agent_name || parsedData.agentName || "",
+        firstName: parsedData.first_name || parsedData.firstName || "",
+        lastName: parsedData.last_name || parsedData.lastName || "",
+        phoneNumber: parsedData.phone_number || parsedData.phoneNumber || "",
+        state: parsedData.state || "",
+        date: parsedData.date || "",
         // Assignment status
         isAssigned: assigneesArray.length > 0,
         assignedTo: assigneesArray.length
@@ -305,7 +472,46 @@ export const fetchUnassignedLeads = async () => {
     }
 
     const leads = result.data.map((lead) => {
-      const parsedData = JSON.parse(lead.leadData);
+      // ✅ SAFE PARSE: Handle both string and object leadData
+      const parsedData = (() => {
+        try {
+          if (typeof lead.leadData === "string") {
+            return JSON.parse(lead.leadData);
+          } else if (
+            typeof lead.leadData === "object" &&
+            lead.leadData !== null
+          ) {
+            return lead.leadData;
+          } else {
+            return {};
+          }
+        } catch (error) {
+          console.warn("Failed to parse leadData for lead:", lead.id, error);
+          return {};
+        }
+      })();
+
+      // ✅ SAFE PARSE: Handle assignees for unassigned leads
+      const assigneesArray = (() => {
+        try {
+          if (Array.isArray(lead.assignees)) {
+            return lead.assignees;
+          } else if (typeof lead.assignees === "string") {
+            const trimmed = lead.assignees.trim();
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+              return JSON.parse(trimmed);
+            } else {
+              return [];
+            }
+          } else {
+            return [];
+          }
+        } catch (error) {
+          console.warn("Failed to parse assignees for lead:", lead.id, error);
+          return [];
+        }
+      })();
+
       return {
         id: lead.id,
         campaignName: lead.campaignName,
@@ -313,17 +519,17 @@ export const fetchUnassignedLeads = async () => {
         leadData: lead.leadData,
         fullLeadData: parsedData,
         assigneeId: lead.assigneeId,
-        assignees: lead.assignees,
+        assignees: assigneesArray,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
         checked: false,
-        agentName: parsedData.agent_name,
-        firstName: parsedData.first_name,
-        lastName: parsedData.last_name,
-        phoneNumber: parsedData.phone_number,
-        state: parsedData.state,
-        date: parsedData.date,
-        isAssigned: !!lead.assigneeId,
+        agentName: parsedData.agent_name || parsedData.agentName || "",
+        firstName: parsedData.first_name || parsedData.firstName || "",
+        lastName: parsedData.last_name || parsedData.lastName || "",
+        phoneNumber: parsedData.phone_number || parsedData.phoneNumber || "",
+        state: parsedData.state || "",
+        date: parsedData.date || "",
+        isAssigned: assigneesArray.length > 0 || !!lead.assigneeId,
         assignedTo: lead.assignee ? lead.assignee.firstname : "Unassigned",
       };
     });

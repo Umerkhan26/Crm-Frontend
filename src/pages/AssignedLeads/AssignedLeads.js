@@ -99,26 +99,234 @@ const UserLeads = ({ userId }) => {
     }
   };
 
-  // Utility: Safe JSON parse for both string/object cases
   const safeParse = (value, fallback = {}) => {
     try {
       if (!value) return fallback;
 
-      if (typeof value === "string") {
-        if (value.trim() === "[object Object]") return fallback;
-        return JSON.parse(value);
-      }
-
+      // If it's already an object/array, return it
       if (typeof value === "object") {
         return value;
       }
 
+      // If it's a string, try to parse it
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+
+        // Return empty array/object for problematic strings
+        if (
+          trimmed === "[object Object]" ||
+          trimmed === "null" ||
+          trimmed === "undefined"
+        ) {
+          return fallback;
+        }
+
+        // Check if it looks like JSON (starts with [ or {)
+        if (
+          (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+          (trimmed.startsWith("{") && trimmed.endsWith("}"))
+        ) {
+          return JSON.parse(trimmed);
+        }
+
+        return fallback;
+      }
+
       return fallback;
     } catch (err) {
-      console.warn("Safe parse failed:", value, err);
+      console.warn("Safe parse failed:", { value, error: err.message });
       return fallback;
     }
   };
+
+  // const loadData = useCallback(async () => {
+  //   try {
+  //     setState((prev) => ({ ...prev, loading: true, error: null }));
+  //     let leads = [];
+  //     let statusCounts = state.statusCounts;
+
+  //     // Convert frontend date filter to backend parameters
+  //     const backendFilterType = getBackendFilterType(dateFilter);
+  //     let startDate, endDate;
+
+  //     if (
+  //       dateFilter === "custom" &&
+  //       customDateRange.start &&
+  //       customDateRange.end
+  //     ) {
+  //       startDate = format(customDateRange.start, "yyyy-MM-dd");
+  //       endDate = format(customDateRange.end, "yyyy-MM-dd");
+  //     }
+
+  //     if (urlCampaign) {
+  //       // Load leads for specific campaign
+  //       const response = await getLeadsByCampaignAndAssignee(
+  //         urlCampaign,
+  //         parseInt(targetUserId)
+  //       );
+  //       leads = Array.isArray(response) ? response : [];
+
+  //       // Calculate status counts from the leads data
+  //       statusCounts = {
+  //         pending: leads.filter((l) => validateStatus(l.status) === "pending")
+  //           .length,
+  //         to_call: leads.filter((l) => validateStatus(l.status) === "to_call")
+  //           .length,
+  //         most_interested: leads.filter(
+  //           (l) => validateStatus(l.status) === "most_interested"
+  //         ).length,
+  //         sold: leads.filter((l) => validateStatus(l.status) === "sold").length,
+  //         not_interested: leads.filter(
+  //           (l) => validateStatus(l.status) === "not_interested"
+  //         ).length,
+  //       };
+  //     } else {
+  //       // First get the status summary
+  //       const summaryResponse = await fetchLeadStatusSummary(targetUserId);
+  //       statusCounts = summaryResponse.statusCounts;
+
+  //       // Then get the leads with pagination and filtering
+  //       const response = await fetchLeadsByAssigneeId(
+  //         targetUserId,
+  //         backendFilterType,
+  //         startDate,
+  //         endDate,
+  //         pagination.currentPage,
+  //         pagination.pageSize
+  //       );
+
+  //       console.log("asssss", response);
+
+  //       // Update pagination from response
+  //       setPagination((prev) => ({
+  //         ...prev,
+  //         totalPages: response.totalPages || 1,
+  //         totalItems: response.totalItems || 0,
+  //       }));
+
+  //       leads = response.data || [];
+
+  //       // Filter leads to only include those assigned to the target user
+  //       leads = leads.filter((lead) => {
+  //         if (Number(lead.assigneeId) === Number(targetUserId)) return true;
+  //         try {
+  //           // const assignees =
+  //           //   typeof lead.assignees === "string"
+  //           //     ? JSON.parse(lead.assignees)
+  //           //     : lead.assignees || [];
+  //           const assignees = safeParse(lead.assignees, []);
+  //           return assignees.some(
+  //             (a) => Number(a.userId) === Number(targetUserId)
+  //           );
+  //         } catch {
+  //           return false;
+  //         }
+  //       });
+
+  //       // Apply campaign filter if selected
+  //       if (state.selectedCampaign) {
+  //         leads = leads.filter(
+  //           (lead) => lead.campaignName === state.selectedCampaign
+  //         );
+  //       }
+  //     }
+
+  //     // Process all leads to extract the proper status and assignment info
+  //     // const mappedLeads = leads
+  //     //   .map((lead) => {
+  //     //     try {
+  //     //       const leadData =
+  //     //         typeof lead.leadData === "string"
+  //     //           ? JSON.parse(lead.leadData)
+  //     //           : lead.leadData || {};
+  //     //       const assignees =
+  //     //         typeof lead.assignees === "string"
+  //     //           ? JSON.parse(lead.assignees)
+  //     //           : Array.isArray(lead.assignees)
+  //     //           ? lead.assignees
+  //     //           : [];
+  //     //       let status = lead.status ? validateStatus(lead.status) : "pending";
+
+  //     //       // Find the user's specific assignment
+  //     //       const userAssignment =
+  //     //         assignees.find(
+  //     //           (a) => Number(a.userId) === Number(targetUserId)
+  //     //         ) || {};
+
+  //     //       if (userAssignment?.status) {
+  //     //         status = validateStatus(userAssignment.status);
+  //     //       }
+
+  //     //       return {
+  //     //         ...lead,
+  //     //         leadData,
+  //     //         assignees,
+  //     //         status, // Prioritize user-specific status
+  //     //         status_updated: userAssignment.status_updated || false,
+  //     //         assigneeId: userAssignment.userId || lead.assigneeId,
+  //     //       };
+  //     //     } catch (error) {
+  //     //       console.error("Error processing lead:", lead.id, error);
+  //     //       return null;
+  //     //     }
+  //     //   })
+  //     //   .filter((lead) => lead !== null);
+
+  //     const mappedLeads = leads
+  //       .map((lead) => {
+  //         const leadData = safeParse(lead.leadData, {});
+  //         const assignees = safeParse(lead.assignees, []);
+
+  //         let status = lead.status ? validateStatus(lead.status) : "pending";
+
+  //         const userAssignment =
+  //           assignees.find((a) => Number(a.userId) === Number(targetUserId)) ||
+  //           {};
+
+  //         if (userAssignment?.status) {
+  //           status = validateStatus(userAssignment.status);
+  //         }
+
+  //         return {
+  //           ...lead,
+  //           leadData,
+  //           assignees,
+  //           status,
+  //           status_updated: userAssignment.status_updated || false,
+  //           assigneeId: userAssignment.userId || lead.assigneeId,
+  //         };
+  //       })
+  //       .filter((lead) => lead !== null);
+
+  //     console.log("Processed leads:", mappedLeads);
+  //     console.log("Final status counts:", statusCounts);
+  //     // Update state with the processed data
+  //     setState((prev) => ({
+  //       ...prev,
+  //       leads: mappedLeads,
+  //       statusCounts,
+  //       loading: false,
+  //     }));
+  //   } catch (err) {
+  //     console.error("Failed to load data:", err.message);
+  //     toast.error("Failed to load leads data");
+  //     setState((prev) => ({
+  //       ...prev,
+  //       error: err.message,
+  //       loading: false,
+  //     }));
+  //   }
+  // }, [
+  //   urlCampaign,
+  //   userId,
+  //   urlUserId,
+  //   targetUserId,
+  //   state.selectedCampaign,
+  //   dateFilter,
+  //   customDateRange,
+  //   pagination.currentPage,
+  //   pagination.pageSize,
+  // ]);
 
   const loadData = useCallback(async () => {
     try {
@@ -140,14 +348,79 @@ const UserLeads = ({ userId }) => {
       }
 
       if (urlCampaign) {
-        // Load leads for specific campaign
         const response = await getLeadsByCampaignAndAssignee(
           urlCampaign,
           parseInt(targetUserId)
         );
         leads = Array.isArray(response) ? response : [];
+      } else {
+        const summaryResponse = await fetchLeadStatusSummary(targetUserId);
+        statusCounts = summaryResponse.statusCounts;
 
-        // Calculate status counts from the leads data
+        const response = await fetchLeadsByAssigneeId(
+          targetUserId,
+          backendFilterType,
+          startDate,
+          endDate,
+          pagination.currentPage,
+          pagination.pageSize
+        );
+
+        console.log("API Response:", response);
+
+        setPagination((prev) => ({
+          ...prev,
+          totalPages: response.totalPages || 1,
+          totalItems: response.totalItems || 0,
+        }));
+
+        leads = response.data || [];
+      }
+
+      // ✅ PERMANENT FIX: Normalize assignees data (handle both string and array formats)
+      leads = leads.map((lead) => {
+        if (typeof lead.assignees === "string") {
+          try {
+            const trimmed = lead.assignees.trim();
+            if (
+              (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+              (trimmed.startsWith("{") && trimmed.endsWith("}"))
+            ) {
+              lead.assignees = JSON.parse(trimmed);
+            } else if (trimmed === "[object Object]") {
+              lead.assignees = [];
+            } else {
+              lead.assignees = [];
+            }
+          } catch (e) {
+            console.error(
+              "Failed to parse assignees for lead",
+              lead.id,
+              ":",
+              e.message
+            );
+            lead.assignees = [];
+          }
+        } else if (!Array.isArray(lead.assignees)) {
+          lead.assignees = [];
+        }
+        return lead;
+      });
+
+      leads = leads.filter((lead) => {
+        if (Number(lead.assigneeId) === Number(targetUserId)) return true;
+
+        const assignees = Array.isArray(lead.assignees) ? lead.assignees : [];
+        return assignees.some((a) => Number(a.userId) === Number(targetUserId));
+      });
+
+      if (state.selectedCampaign) {
+        leads = leads.filter(
+          (lead) => lead.campaignName === state.selectedCampaign
+        );
+      }
+
+      if (urlCampaign) {
         statusCounts = {
           pending: leads.filter((l) => validateStatus(l.status) === "pending")
             .length,
@@ -161,108 +434,18 @@ const UserLeads = ({ userId }) => {
             (l) => validateStatus(l.status) === "not_interested"
           ).length,
         };
-      } else {
-        // First get the status summary
-        const summaryResponse = await fetchLeadStatusSummary(targetUserId);
-        statusCounts = summaryResponse.statusCounts;
-
-        // Then get the leads with pagination and filtering
-        const response = await fetchLeadsByAssigneeId(
-          targetUserId,
-          backendFilterType,
-          startDate,
-          endDate,
-          pagination.currentPage,
-          pagination.pageSize
-        );
-
-        console.log("asssss", response);
-
-        // Update pagination from response
-        setPagination((prev) => ({
-          ...prev,
-          totalPages: response.totalPages || 1,
-          totalItems: response.totalItems || 0,
-        }));
-
-        leads = response.data || [];
-
-        // Filter leads to only include those assigned to the target user
-        leads = leads.filter((lead) => {
-          if (Number(lead.assigneeId) === Number(targetUserId)) return true;
-          try {
-            // const assignees =
-            //   typeof lead.assignees === "string"
-            //     ? JSON.parse(lead.assignees)
-            //     : lead.assignees || [];
-            const assignees = safeParse(lead.assignees, []);
-            return assignees.some(
-              (a) => Number(a.userId) === Number(targetUserId)
-            );
-          } catch {
-            return false;
-          }
-        });
-
-        // Apply campaign filter if selected
-        if (state.selectedCampaign) {
-          leads = leads.filter(
-            (lead) => lead.campaignName === state.selectedCampaign
-          );
-        }
       }
-
-      // Process all leads to extract the proper status and assignment info
-      // const mappedLeads = leads
-      //   .map((lead) => {
-      //     try {
-      //       const leadData =
-      //         typeof lead.leadData === "string"
-      //           ? JSON.parse(lead.leadData)
-      //           : lead.leadData || {};
-      //       const assignees =
-      //         typeof lead.assignees === "string"
-      //           ? JSON.parse(lead.assignees)
-      //           : Array.isArray(lead.assignees)
-      //           ? lead.assignees
-      //           : [];
-      //       let status = lead.status ? validateStatus(lead.status) : "pending";
-
-      //       // Find the user's specific assignment
-      //       const userAssignment =
-      //         assignees.find(
-      //           (a) => Number(a.userId) === Number(targetUserId)
-      //         ) || {};
-
-      //       if (userAssignment?.status) {
-      //         status = validateStatus(userAssignment.status);
-      //       }
-
-      //       return {
-      //         ...lead,
-      //         leadData,
-      //         assignees,
-      //         status, // Prioritize user-specific status
-      //         status_updated: userAssignment.status_updated || false,
-      //         assigneeId: userAssignment.userId || lead.assigneeId,
-      //       };
-      //     } catch (error) {
-      //       console.error("Error processing lead:", lead.id, error);
-      //       return null;
-      //     }
-      //   })
-      //   .filter((lead) => lead !== null);
-
       const mappedLeads = leads
         .map((lead) => {
           const leadData = safeParse(lead.leadData, {});
-          const assignees = safeParse(lead.assignees, []);
+          const assignees = Array.isArray(lead.assignees) ? lead.assignees : [];
 
           let status = lead.status ? validateStatus(lead.status) : "pending";
 
-          const userAssignment =
-            assignees.find((a) => Number(a.userId) === Number(targetUserId)) ||
-            {};
+          // Find the user's specific assignment
+          const userAssignment = assignees.find(
+            (a) => Number(a.userId) === Number(targetUserId)
+          );
 
           if (userAssignment?.status) {
             status = validateStatus(userAssignment.status);
@@ -273,14 +456,15 @@ const UserLeads = ({ userId }) => {
             leadData,
             assignees,
             status,
-            status_updated: userAssignment.status_updated || false,
-            assigneeId: userAssignment.userId || lead.assigneeId,
+            status_updated: userAssignment?.status_updated || false,
+            assigneeId: userAssignment?.userId || lead.assigneeId,
           };
         })
         .filter((lead) => lead !== null);
 
       console.log("Processed leads:", mappedLeads);
       console.log("Final status counts:", statusCounts);
+
       // Update state with the processed data
       setState((prev) => ({
         ...prev,
@@ -308,6 +492,7 @@ const UserLeads = ({ userId }) => {
     pagination.currentPage,
     pagination.pageSize,
   ]);
+
   const validateStatus = (status) => {
     if (!status) return "pending";
 
@@ -319,7 +504,7 @@ const UserLeads = ({ userId }) => {
       "most_interested",
       "sold",
       "not_interested",
-      "seld", // Add any other status variations you encounter
+      "seld",
     ];
 
     // Try to match common variations

@@ -207,15 +207,36 @@ const MasterLead = () => {
       const normalizeLeadData = (leadData) => {
         try {
           if (!leadData) return {};
-          if (typeof leadData === "string") {
-            return JSON.parse(leadData);
-          }
-          if (typeof leadData === "object") {
+
+          // If it's already an object, return it directly
+          if (typeof leadData === "object" && leadData !== null) {
             return leadData;
           }
+
+          // If it's a string, try to parse it
+          if (typeof leadData === "string") {
+            const trimmed = leadData.trim();
+
+            // Handle the "[object Object]" case
+            if (trimmed === "[object Object]") {
+              console.warn(
+                'Found "[object Object]" string, returning empty object'
+              );
+              return {};
+            }
+
+            // Try to parse as JSON
+            try {
+              return JSON.parse(trimmed);
+            } catch (parseError) {
+              console.warn("Failed to parse leadData as JSON:", trimmed);
+              return {};
+            }
+          }
+
           return {};
         } catch (err) {
-          console.error("Invalid leadData:", leadData, err);
+          console.error("Error normalizing leadData:", leadData, err);
           return {};
         }
       };
@@ -259,43 +280,56 @@ const MasterLead = () => {
       // });
 
       const mappedLeads = filteredLeads.map((lead) => {
-        let leadData = {};
+        console.log("🔍 Processing lead from service:", lead.id, {
+          hasFullLeadData: !!lead.fullLeadData,
+          hasAssignees: !!lead.assignees,
+          assigneesType: typeof lead.assignees,
+          isAssigned: lead.isAssigned,
+          assignedTo: lead.assignedTo,
+        });
 
-        try {
-          if (typeof lead.leadData === "string") {
-            leadData = JSON.parse(lead.leadData);
-          } else if (
-            typeof lead.leadData === "object" &&
-            lead.leadData !== null
-          ) {
-            leadData = lead.leadData;
-          }
-        } catch (err) {
-          console.error("Invalid leadData:", lead.leadData, err);
-          leadData = {};
-        }
-
+        // ✅ Since service functions now handle parsing, use the pre-parsed data
+        const leadData = lead.fullLeadData || {};
         const assigneesArray = Array.isArray(lead.assignees)
           ? lead.assignees
           : [];
 
+        // ✅ Use the data that's already processed by the service
         return {
           ...lead,
           checked: false,
-          firstName: leadData.first_name || leadData.firstName || "",
-          lastName: leadData.last_name || leadData.lastName || "",
-          state: leadData.state || "",
-          phoneNumber: leadData.phone_number || leadData.phoneNumber || "",
-          agentName: leadData.agent_name || leadData.agentName || "",
-          assignedTo: assigneesArray.length
-            ? assigneesArray
-                .map((a) => `${a.firstname} ${a.lastname}`)
-                .join(", ")
-            : "Unassigned",
-          isAssigned: assigneesArray.length > 0,
+          // Use the flattened properties from service first, fallback to parsed data
+          firstName:
+            lead.firstName || leadData.first_name || leadData.firstName || "",
+          lastName:
+            lead.lastName || leadData.last_name || leadData.lastName || "",
+          state: lead.state || leadData.state || "",
+          phoneNumber:
+            lead.phoneNumber ||
+            leadData.phone_number ||
+            leadData.phoneNumber ||
+            "",
+          agentName:
+            lead.agentName || leadData.agent_name || leadData.agentName || "",
+          // Use assignedTo from service if available, otherwise generate it
+          assignedTo:
+            lead.assignedTo ||
+            (assigneesArray.length
+              ? assigneesArray
+                  .map((a) =>
+                    a.firstname && a.lastname
+                      ? `${a.firstname} ${a.lastname}`
+                      : "Unknown User"
+                  )
+                  .join(", ")
+              : "Unassigned"),
+          // Use isAssigned from service if available, otherwise calculate it
+          isAssigned:
+            lead.isAssigned !== undefined
+              ? lead.isAssigned
+              : assigneesArray.length > 0,
         };
       });
-
       updateState({
         leads: mappedLeads,
         loading: false,
