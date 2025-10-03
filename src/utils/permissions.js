@@ -79,21 +79,6 @@ export const hasPermission = (
   return found;
 };
 
-// export const hasAnyPermission = (
-//   user,
-//   permissionNames,
-//   isAdminUser = false
-// ) => {
-//   if (isAdminUser || isAdmin(user)) return true;
-
-//   const permissions = getEffectivePermissions(user);
-//   if (!permissions || !Array.isArray(permissions)) return false;
-
-//   return permissionNames.some((name) =>
-//     hasPermission(permissions, name, null, null, isAdminUser)
-//   );
-// };
-
 export const hasAnyPermission = (
   user,
   permissionNames,
@@ -115,7 +100,6 @@ export const hasExclusivePermission = (user, permissionName) => {
   const permissions = getEffectivePermissions(user);
   if (!permissions || !Array.isArray(permissions)) return false;
 
-  // Check if user has ONLY the specified permission and not broader ones
   return (
     permissions.some((p) => p.name === permissionName) &&
     !permissions.some(
@@ -159,11 +143,9 @@ export const isAdmin = (user) => {
   );
 };
 
-// Get menu items based on permissions
 export const getMenuItems = (user) => {
   const isAdminUser = isAdmin(user);
   const permissions = getEffectivePermissions(user);
-  // In your getMenuItems function, before filtering
   console.log("User permissions:", permissions);
   console.log(
     "Checking for assigngetByAssigneeedLead::",
@@ -373,11 +355,11 @@ export const getMenuItems = (user) => {
                 path: "/all-activities",
                 requiredPermissions: [],
               }, // admin also sees
-              {
-                title: "System Settings",
-                path: "/settings",
-                requiredPermissions: [],
-              },
+              // {
+              //   title: "System Settings",
+              //   path: "/settings",
+              //   requiredPermissions: [],
+              // },
             ],
             requiredPermissions: [],
           },
