@@ -113,6 +113,7 @@ import {
   LOGOUT_USER_SUCCESS,
   REFRESH_PERMISSIONS,
   UPDATE_PERMISSIONS,
+  UPDATE_USER_SUCCESS,
 } from "./actionTypes";
 
 export const checkLogin = (user, history) => ({
@@ -133,6 +134,11 @@ export const loginUserSuccessful = (payload) => ({
 export const refreshPermissions = (permissions) => ({
   type: REFRESH_PERMISSIONS,
   payload: { permissions },
+});
+
+export const updateUserSuccess = (user) => ({
+  type: UPDATE_USER_SUCCESS,
+  payload: user,
 });
 export const updatePermissions = (permissions) => ({
   type: UPDATE_PERMISSIONS,

@@ -459,9 +459,8 @@ export const fetchUnassignedLeads = async () => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
-      );
+      throw new Error();
+      // `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
     }
 
     const result = await response.json();

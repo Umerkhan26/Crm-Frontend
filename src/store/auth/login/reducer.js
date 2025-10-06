@@ -64,6 +64,12 @@ const login = (state = initialState, action) => {
         ...initialState,
       };
 
+    case "UPDATE_USER_SUCCESS":
+      return {
+        ...state,
+        user: { ...state.user, ...action.payload },
+      };
+
     case API_ERROR:
       return {
         ...state,

@@ -8,11 +8,14 @@ import { registerUser, updateUserById } from "../../services/auth";
 import { ClipLoader } from "react-spinners";
 import { getAllRoles } from "../../services/roleService";
 import VendorForm from "./Registration/VenderForm";
+import { useDispatch } from "react-redux";
+import { updateUserSuccess } from "../../store/actions";
 
 const RegisterUser = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const user = state?.user || null;
+  const dispatch = useDispatch();
 
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedUserRole, setSelectedUserRole] = useState(null);
@@ -254,6 +257,18 @@ const RegisterUser = () => {
       if (user) {
         result = await updateUserById(user.user.id, formPayload, token);
         toast.success("User updated successfully!");
+        const loggedInUser = JSON.parse(localStorage.getItem("authUser"));
+
+        if (loggedInUser && loggedInUser.id === user.user.id) {
+          const updatedUser = {
+            ...loggedInUser,
+            ...payload, // updated fields
+          };
+
+          dispatch(updateUserSuccess(updatedUser));
+
+          localStorage.setItem("authUser", JSON.stringify(updatedUser));
+        }
       } else {
         result = await registerUser(formPayload);
         toast.success("User registered successfully!");
