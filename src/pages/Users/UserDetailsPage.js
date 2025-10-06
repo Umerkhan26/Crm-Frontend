@@ -112,15 +112,62 @@ const UserDetailsPage = () => {
     }
   };
 
+  // useEffect(() => {
+  //   const fetchUserDetails = async () => {
+  //     try {
+  //       setLoading(true);
+
+  //       // Restrict access to admin users with 'user:get' permission
+  //       const canView = hasAnyPermission(currentUser, ["user:get"]);
+  //       if (!canView) {
+  //         throw new Error("You don't have permission to view this page");
+  //       }
+
+  //       const response = await getUserById(userId);
+  //       let userData =
+  //         response.data?.find((u) => u.id === parseInt(userId)) ||
+  //         response.user ||
+  //         response.data ||
+  //         response;
+
+  //       if (!userData) {
+  //         throw new Error("User data not found");
+  //       }
+
+  //       setUser(userData);
+  //       await fetchUserCampaigns(userData);
+  //     } catch (err) {
+  //       setError(err.message || "Failed to fetch user details");
+  //       toast.error(err.message || "Failed to load user details");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchUserDetails();
+  // }, [userId, currentUser, navigate]);
+
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
         setLoading(true);
 
-        // Restrict access to admin users with 'user:get' permission
-        const canView = hasAnyPermission(currentUser, ["user:get"]);
-        if (!canView) {
+        // Check if user has permission to view user details
+        const canViewAll = hasAnyPermission(currentUser, ["user:get"]);
+        const canViewSelf = hasAnyPermission(currentUser, ["user:getById"]);
+
+        // Allow access if user has either permission
+        if (!canViewAll && !canViewSelf) {
           throw new Error("You don't have permission to view this page");
+        }
+
+        // If user only has getById permission, they can only view their own profile
+        if (
+          canViewSelf &&
+          !canViewAll &&
+          currentUser?.id !== parseInt(userId)
+        ) {
+          throw new Error("You can only view your own profile");
         }
 
         const response = await getUserById(userId);
