@@ -14,12 +14,12 @@ import { FaFileImport, FaFileDownload } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
-const ImportLeadsModal = ({
+const ImportClientLeadsModal = ({
   isOpen,
   toggle,
   onFileUpload,
   onMapping,
-  selectedCampaign,
+  selectedOrder,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -38,48 +38,42 @@ const ImportLeadsModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (selectedFile && selectedCampaign) {
-      onMapping(selectedFile);
+    if (selectedFile && selectedOrder) {
+      onMapping(selectedFile); // Pass file to mapping modal
     } else {
-      toast.error("Please select a file and campaign");
+      toast.error("Please select a file and order");
     }
   };
 
   const downloadSample = () => {
-    if (!selectedCampaign || !selectedCampaign.fields) {
-      toast.error("Please select a campaign first");
-      return;
-    }
-
-    let fields = selectedCampaign.fields;
-    if (typeof fields === "string") {
-      try {
-        fields = JSON.parse(fields);
-      } catch (e) {
-        console.error("Failed to parse campaign fields:", e);
-        toast.error("Failed to generate sample file");
-        return;
-      }
-    }
+    const campaignFields = selectedOrder?.campaign?.fields
+      ? JSON.parse(selectedOrder.campaign.fields)
+      : [];
+    // const leadDataSample = campaignFields.reduce(
+    //   (acc, field) => ({ ...acc, [field.col_slug]: "sample_value" }),
+    //   {}
+    // );
 
     const sampleData = [
-      fields.map((field) => field.col_name),
-      fields.map(() => "sample_value"),
+      ["Order ID", "Campaign ID", ...campaignFields.map((f) => f.col_name)],
+      [
+        selectedOrder?.id || 1,
+        selectedOrder?.campaign_id || 1,
+        ...campaignFields.map(() => "sample_value"),
+      ],
     ];
-
     const ws = XLSX.utils.aoa_to_sheet(sampleData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sample");
-    XLSX.writeFile(wb, "sample_leads.xlsx");
+    XLSX.write(wb, "sample_leads.xlsx");
   };
-
   return (
     <Modal isOpen={isOpen} toggle={toggle} style={{ fontSize: "0.9rem" }}>
       <ModalHeader
         toggle={toggle}
         style={{ padding: "0.8rem 1rem", fontSize: "1.1rem" }}
       >
-        Import Leads
+        Import Lead
       </ModalHeader>
       <Form onSubmit={handleSubmit}>
         <ModalBody style={{ padding: "0.8rem 1rem" }}>
@@ -114,7 +108,6 @@ const ImportLeadsModal = ({
             color="primary"
             onClick={downloadSample}
             style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem" }}
-            disabled={!selectedCampaign}
           >
             <FaFileDownload
               style={{ fontSize: "0.8rem", marginRight: "0.3rem" }}
@@ -137,7 +130,7 @@ const ImportLeadsModal = ({
                 padding: "0.4rem 0.8rem",
                 marginLeft: "0.5rem",
               }}
-              disabled={!selectedFile || !selectedCampaign}
+              disabled={!selectedFile || !selectedOrder}
             >
               <FaFileImport
                 style={{ fontSize: "0.8rem", marginRight: "0.3rem" }}
@@ -151,4 +144,4 @@ const ImportLeadsModal = ({
   );
 };
 
-export default ImportLeadsModal;
+export default ImportClientLeadsModal;

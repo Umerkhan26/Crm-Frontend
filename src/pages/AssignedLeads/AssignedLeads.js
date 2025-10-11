@@ -61,6 +61,7 @@ const UserLeads = ({ userId }) => {
     error: null,
     activeTab: "all",
     fromUserDetails: !!urlUserId,
+    isFilteredMode: !!urlCampaign || !!urlUserId,
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -75,11 +76,14 @@ const UserLeads = ({ userId }) => {
   });
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
 
-  const user = useSelector((state) => {
-    if (state.auth?.user) return state.auth.user;
+  const reduxUser = useSelector((state) => state.auth?.user);
+
+  const user = useMemo(() => {
+    if (reduxUser) return reduxUser;
+
     const storedUser = localStorage.getItem("authUser");
     return storedUser ? JSON.parse(storedUser) : null;
-  });
+  }, [reduxUser]);
   const targetUserId =
     userId || urlUserId || (user?.id ? String(user.id) : null);
   const isAdmin = hasAnyPermission(user, ["user:get"]);
@@ -139,11 +143,22 @@ const UserLeads = ({ userId }) => {
     }
   };
 
+  useEffect(() => {
+    if (urlCampaign && state.selectedCampaign !== urlCampaign) {
+      setState((prev) => ({
+        ...prev,
+        selectedCampaign: urlCampaign,
+      }));
+    }
+  }, [urlCampaign]);
+
   const loadData = useCallback(async () => {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }));
+
       let leads = [];
-      let statusCounts = state.statusCounts;
+      let totalItems = 0;
+      let totalPages = 1;
 
       // Convert frontend date filter to backend parameters
       const backendFilterType = getBackendFilterType(dateFilter);
@@ -158,16 +173,27 @@ const UserLeads = ({ userId }) => {
         endDate = format(customDateRange.end, "yyyy-MM-dd");
       }
 
-      if (urlCampaign) {
+      // Handle different data fetching scenarios
+      if (urlCampaign && urlUserId) {
+        // Scenario 1: Coming from UserDetails with specific campaign and user
+        const response = await getLeadsByCampaignAndAssignee(
+          urlCampaign,
+          parseInt(urlUserId)
+        );
+        leads = Array.isArray(response) ? response : [];
+        totalItems = leads.length;
+        totalPages = Math.ceil(totalItems / pagination.pageSize);
+      } else if (urlCampaign) {
+        // Scenario 2: Only campaign filter
         const response = await getLeadsByCampaignAndAssignee(
           urlCampaign,
           parseInt(targetUserId)
         );
         leads = Array.isArray(response) ? response : [];
+        totalItems = leads.length;
+        totalPages = Math.ceil(totalItems / pagination.pageSize);
       } else {
-        const summaryResponse = await fetchLeadStatusSummary(targetUserId);
-        statusCounts = summaryResponse.statusCounts;
-
+        // Scenario 3: Normal paginated data (when accessing component directly)
         const response = await fetchLeadsByAssigneeId(
           targetUserId,
           backendFilterType,
@@ -177,85 +203,49 @@ const UserLeads = ({ userId }) => {
           pagination.pageSize
         );
 
-        setPagination((prev) => ({
-          ...prev,
-          totalPages: response.totalPages || 1,
-          totalItems: response.totalItems || 0,
-        }));
-
+        totalPages = response.totalPages || 1;
+        totalItems = response.totalItems || 0;
         leads = response.data || [];
       }
 
-      // ✅ PERMANENT FIX: Normalize assignees data (handle both string and array formats)
-      leads = leads.map((lead) => {
-        if (typeof lead.assignees === "string") {
-          try {
-            const trimmed = lead.assignees.trim();
-            if (
-              (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
-              (trimmed.startsWith("{") && trimmed.endsWith("}"))
-            ) {
-              lead.assignees = JSON.parse(trimmed);
-            } else if (trimmed === "[object Object]") {
-              lead.assignees = [];
-            } else {
-              lead.assignees = [];
-            }
-          } catch (e) {
-            console.error(
-              "Failed to parse assignees for lead",
-              lead.id,
-              ":",
-              e.message
-            );
-            lead.assignees = [];
-          }
-        } else if (!Array.isArray(lead.assignees)) {
-          lead.assignees = [];
-        }
-        return lead;
-      });
-
-      leads = leads.filter((lead) => {
-        if (Number(lead.assigneeId) === Number(targetUserId)) return true;
-
-        const assignees = Array.isArray(lead.assignees) ? lead.assignees : [];
-        return assignees.some((a) => Number(a.userId) === Number(targetUserId));
-      });
-
-      if (state.selectedCampaign) {
-        leads = leads.filter(
-          (lead) => lead.campaignName === state.selectedCampaign
-        );
-      }
-
-      if (urlCampaign) {
-        statusCounts = {
-          pending: leads.filter((l) => validateStatus(l.status) === "pending")
-            .length,
-          to_call: leads.filter((l) => validateStatus(l.status) === "to_call")
-            .length,
-          most_interested: leads.filter(
-            (l) => validateStatus(l.status) === "most_interested"
-          ).length,
-          sold: leads.filter((l) => validateStatus(l.status) === "sold").length,
-          not_interested: leads.filter(
-            (l) => validateStatus(l.status) === "not_interested"
-          ).length,
-        };
-      }
-      const mappedLeads = leads
+      // Process leads data
+      const processedLeads = leads
         .map((lead) => {
+          // Parse assignees safely
+          let assignees = [];
+          if (typeof lead.assignees === "string") {
+            try {
+              const trimmed = lead.assignees.trim();
+              if (
+                (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+                (trimmed.startsWith("{") && trimmed.endsWith("}"))
+              ) {
+                assignees = JSON.parse(trimmed);
+              }
+            } catch (e) {
+              console.warn("Failed to parse assignees for lead", lead.id);
+              assignees = [];
+            }
+          } else if (Array.isArray(lead.assignees)) {
+            assignees = lead.assignees;
+          }
+
+          // Filter leads by target user
+          const isAssignedToUser =
+            Number(lead.assigneeId) === Number(targetUserId) ||
+            assignees.some((a) => Number(a.userId) === Number(targetUserId));
+
+          if (!isAssignedToUser) return null;
+
+          // Parse lead data
           const leadData = safeParse(lead.leadData, {});
-          const assignees = Array.isArray(lead.assignees) ? lead.assignees : [];
 
-          let status = lead.status ? validateStatus(lead.status) : "pending";
-
-          // Find the user's specific assignment
+          // Find user's specific assignment and determine status
           const userAssignment = assignees.find(
             (a) => Number(a.userId) === Number(targetUserId)
           );
 
+          let status = lead.status ? validateStatus(lead.status) : "pending";
           if (userAssignment?.status) {
             status = validateStatus(userAssignment.status);
           }
@@ -271,12 +261,58 @@ const UserLeads = ({ userId }) => {
         })
         .filter((lead) => lead !== null);
 
-      // Update state with the processed data
+      // Filter by campaign if selected
+      let filteredLeads = processedLeads;
+      if (
+        state.selectedCampaign &&
+        state.selectedCampaign !== "All Campaigns"
+      ) {
+        filteredLeads = processedLeads.filter(
+          (lead) => lead.campaignName === state.selectedCampaign
+        );
+      }
+
+      // Apply campaign permission filtering for non-admin users
+      if (!isAdmin && state.allowedCampaigns.length > 0) {
+        const allowedCampaignNames = state.allowedCampaigns.map(
+          (c) => c.campaignName
+        );
+        filteredLeads = filteredLeads.filter((lead) =>
+          allowedCampaignNames.includes(lead.campaignName)
+        );
+      }
+
+      // Calculate status counts from the final filtered leads
+      const calculatedStatusCounts = {
+        pending: 0,
+        to_call: 0,
+        most_interested: 0,
+        sold: 0,
+        not_interested: 0,
+      };
+
+      filteredLeads.forEach((lead) => {
+        const status = validateStatus(lead.status);
+        if (calculatedStatusCounts.hasOwnProperty(status)) {
+          calculatedStatusCounts[status]++;
+        }
+      });
+
+      // Update pagination
+      setPagination((prev) => ({
+        ...prev,
+        totalPages: totalPages,
+        totalItems:
+          filteredLeads.length > 0 ? filteredLeads.length : totalItems,
+      }));
+
+      // Update state with all data at once
       setState((prev) => ({
         ...prev,
-        leads: mappedLeads,
-        statusCounts,
+        leads: filteredLeads,
+        statusCounts: calculatedStatusCounts,
         loading: false,
+        isFilteredMode: !!urlCampaign || !!urlUserId,
       }));
     } catch (err) {
       console.error("Failed to load data:", err.message);
@@ -288,15 +324,17 @@ const UserLeads = ({ userId }) => {
       }));
     }
   }, [
-    urlCampaign,
-    userId,
-    urlUserId,
+    // Minimal dependencies - only what truly requires data refetch
     targetUserId,
-    state.selectedCampaign,
+    urlCampaign,
+    urlUserId,
     dateFilter,
-    customDateRange,
+    customDateRange.start,
+    customDateRange.end,
     pagination.currentPage,
     pagination.pageSize,
+    state.selectedCampaign, // Keep this if campaign changes should trigger reload
+    isAdmin,
   ]);
 
   const validateStatus = (status) => {

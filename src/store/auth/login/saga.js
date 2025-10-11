@@ -79,7 +79,6 @@ function* watchPermissionChanges() {
       const permissions = JSON.parse(
         localStorage.getItem("rolePermissions") || "[]"
       );
-      console.log("Updating permissions from storage:", permissions);
       yield put(
         updatePermissions({
           permissions,

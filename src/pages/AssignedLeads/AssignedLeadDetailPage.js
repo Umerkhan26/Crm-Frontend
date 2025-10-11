@@ -41,6 +41,20 @@ import { useSelector } from "react-redux";
 import { hasAnyPermission } from "../../utils/permissions";
 import { FaTrash } from "react-icons/fa";
 import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
+import {
+  EditorState,
+  ContentState,
+  convertFromHTML,
+  convertToRaw,
+} from "draft-js";
+import { Editor } from "react-draft-wysiwyg";
+import draftToHtml from "draftjs-to-html";
+import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
+import {
+  getEmailTemplates,
+  updateEmailTemplate,
+} from "../../services/emailTemplateService";
+import { sendEmailToLead } from "../../services/emailService";
 
 const validateStatus = (status) => {
   const validStatuses = [
@@ -108,7 +122,27 @@ const AssignedLeadDetailPage = () => {
   const targetUserId = userId || currentUser?.id;
   const isAdmin = hasAnyPermission(currentUser, ["user:get"]);
   const [deletingReminderId, setDeletingReminderId] = useState(null);
+  const [emailTemplates, setEmailTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  const [emailSending, setEmailSending] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
+  const refreshActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
+      const fetchedActivities =
+        activitiesResponse.data || activitiesResponse.activities || [];
+      setActivities(fetchedActivities);
+    } catch (err) {
+      console.error("Error fetching activities:", err);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
   useEffect(() => {
     const fetchLeadDetails = async () => {
       try {
@@ -135,6 +169,7 @@ const AssignedLeadDetailPage = () => {
             campaignName,
             targetUserId
           );
+          console.log("assigne lead data", response);
           leads = Array.isArray(response) ? response : response.data || [];
           leadData = leads.find((lead) => lead.id === parseInt(leadId));
         }
@@ -159,12 +194,28 @@ const AssignedLeadDetailPage = () => {
             ? JSON.parse(leadData.assignees)
             : leadData.assignees || [];
 
-        const status = validateStatus(
-          leadData.status ||
-            leadData.assignees.find((a) => a.userId === targetUserId)?.status
+        // const status = validateStatus(
+        //   leadData.status ||
+        //     leadData.assignees.find((a) => a.userId === targetUserId)?.status
+        // );
+
+        let status;
+        let status_updated = false;
+
+        const userAssignment = leadData.assignees.find(
+          (a) => Number(a.userId) === Number(targetUserId)
         );
+
+        if (userAssignment) {
+          status = validateStatus(userAssignment.status);
+          status_updated = userAssignment.status_updated || false;
+        } else {
+          // Fallback to lead's general status
+          status = validateStatus(leadData.status);
+          status_updated = leadData.status_updated || false;
+        }
         setCurrentStatus(status);
-        setIsDisabled(leadData.status_updated || false);
+        setIsDisabled(status_updated);
         setLead(leadData);
 
         // Fetch notes
@@ -187,12 +238,15 @@ const AssignedLeadDetailPage = () => {
         // Fetch lead activities
         setActivitiesLoading(true);
         const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
+        console.log("actdd", activitiesResponse);
 
         const fetchedActivities = Array.isArray(activitiesResponse)
           ? activitiesResponse
           : activitiesResponse.data || activitiesResponse.activities || [];
 
         setActivities(fetchedActivities);
+        const templates = await getEmailTemplates();
+        setEmailTemplates(templates);
       } catch (err) {
         console.error("Error fetching lead details:", err);
         setError(err.message || "Failed to fetch lead details");
@@ -230,12 +284,10 @@ const AssignedLeadDetailPage = () => {
       const addedNote = response.note || response.data || response;
 
       if (addedNote) {
-        // Update notes state
         setNotes((prev) => [...prev, addedNote]);
 
-        // Optimistically add activity
         const newActivity = {
-          id: `temp-${Date.now()}`, // Temporary ID until server confirms
+          id: `temp-${Date.now()}`,
           action: "note_added",
           details: newNote,
           leadId: leadId,
@@ -251,11 +303,9 @@ const AssignedLeadDetailPage = () => {
 
         setActivities((prev) => [...prev, newActivity]);
 
-        // Clear input
         setNewNote("");
         toast.success("Note added successfully");
 
-        // Optionally refetch activities to sync with server
         try {
           setActivitiesLoading(true);
           const activitiesResponse = await getLeadActivitiesByLeadId(leadId);
@@ -378,6 +428,102 @@ const AssignedLeadDetailPage = () => {
     }
   };
 
+  const handleTemplateChange = (e) => {
+    const templateServiceName = e.target.value;
+    setSelectedTemplate(templateServiceName);
+
+    if (templateServiceName) {
+      try {
+        const template = emailTemplates.find(
+          (t) => t.serviceName === templateServiceName
+        );
+        if (template && template.bodyTemplate) {
+          const blocksFromHTML = convertFromHTML(template.bodyTemplate);
+          const contentState = ContentState.createFromBlockArray(
+            blocksFromHTML.contentBlocks,
+            blocksFromHTML.entityMap
+          );
+          setEditorState(EditorState.createWithContent(contentState));
+          setSelectedTemplateId(template.id);
+        } else {
+          setEditorState(EditorState.createEmpty());
+          setSelectedTemplateId(null);
+          toast.error(
+            template ? "Template has no content" : "Template not found"
+          );
+        }
+      } catch (err) {
+        toast.error(err.message || "Failed to load template content");
+        setEditorState(EditorState.createEmpty());
+        setSelectedTemplateId(null);
+      }
+    } else {
+      setEditorState(EditorState.createEmpty());
+      setSelectedTemplateId(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedTemplate) {
+      toast.error("Please select an email template");
+      return;
+    }
+
+    try {
+      setEmailSending(true);
+
+      const response = await sendEmailToLead(
+        parseInt(leadId),
+        selectedTemplate,
+        lead.leadData
+      );
+
+      toast.success(response.message || "Email sent successfully");
+
+      // Refresh activities to show the email activity
+      await refreshActivities();
+
+      setSelectedTemplate("");
+      setEditorState(EditorState.createEmpty());
+      setSelectedTemplateId(null);
+      setEmailModalOpen(false);
+    } catch (err) {
+      toast.error(err.message || "Failed to send email");
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!selectedTemplate || !selectedTemplateId) {
+      toast.error("Please select a template to save");
+      return;
+    }
+
+    try {
+      setTemplateSaving(true);
+      const updatedContent = draftToHtml(
+        convertToRaw(editorState.getCurrentContent())
+      );
+      const template = emailTemplates.find(
+        (t) => t.serviceName === selectedTemplate
+      );
+      await updateEmailTemplate(selectedTemplateId, {
+        name: template.name,
+        subjectTemplate: template.subjectTemplate,
+        bodyTemplate: updatedContent,
+      });
+
+      const templates = await getEmailTemplates();
+      setEmailTemplates(templates);
+      toast.success("Template saved successfully");
+    } catch (err) {
+      toast.error(err.message || "Failed to save template");
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
   const handleDeleteActivity = (activityId) => {
     confirmDelete(
       async () => {
@@ -400,6 +546,7 @@ const AssignedLeadDetailPage = () => {
         const token = localStorage.getItem("token");
         await deleteNote(noteId, token);
         setNotes((prev) => prev.filter((note) => note.id !== noteId));
+        await refreshActivities();
       },
       () => setDeletingNoteId(null),
       "note"
@@ -415,6 +562,7 @@ const AssignedLeadDetailPage = () => {
         setReminders((prev) =>
           prev.filter((reminder) => reminder.id !== reminderId)
         );
+        await refreshActivities();
       },
       () => setDeletingReminderId(null),
       "reminder"
@@ -550,6 +698,7 @@ const AssignedLeadDetailPage = () => {
                   )}
                 </div> */}
               </h6>
+
               <Button color="light" size="sm" onClick={() => navigate(-1)}>
                 ← Back
               </Button>
@@ -600,16 +749,54 @@ const AssignedLeadDetailPage = () => {
                     <tr>
                       <th>Assigned To</th>
                       <td>
-                        {lead.assignees?.find((a) => a.userId === targetUserId)
-                          ?.firstname || "N/A"}{" "}
-                        {lead.assignees?.find((a) => a.userId === targetUserId)
-                          ?.lastname || ""}
+                        {lead.assignees?.find(
+                          (a) => Number(a.userId) === Number(targetUserId)
+                        )?.firstname || "N/A"}{" "}
+                        {lead.assignees?.find(
+                          (a) => Number(a.userId) === Number(targetUserId)
+                        )?.lastname || ""}
+                        {isAdmin && (
+                          <small className="text-muted d-block">
+                            (User ID: {targetUserId})
+                          </small>
+                        )}
                       </td>
                     </tr>
                   </tbody>
                 </Table>
               </Col>
             </Row>
+
+            <div className="mt-4 mb-4">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h6 className="mb-2">Email</h6>
+                {lead?.leadData?.email && (
+                  <Button
+                    color="primary"
+                    size="sm"
+                    onClick={() => setEmailModalOpen(true)}
+                  >
+                    ✉️ Send Email
+                  </Button>
+                )}
+              </div>
+
+              {lead?.leadData?.email && (
+                <div className="mt-2">
+                  <Alert color="info" className="py-2 px-3 small mb-0">
+                    Ready to send email to:{" "}
+                    <strong>{lead.leadData.email}</strong>
+                  </Alert>
+                </div>
+              )}
+            </div>
+
             <div
               style={{
                 display: "flex",
@@ -889,6 +1076,131 @@ const AssignedLeadDetailPage = () => {
               </ModalBody>
             </Modal>
 
+            <Modal
+              isOpen={emailModalOpen}
+              toggle={() => setEmailModalOpen(!emailModalOpen)}
+              size="lg"
+            >
+              <ModalHeader toggle={() => setEmailModalOpen(false)}>
+                Send Email to Lead
+              </ModalHeader>
+              <ModalBody>
+                <Form>
+                  <FormGroup>
+                    <Label>Select Template</Label>
+                    <Input
+                      type="select"
+                      value={selectedTemplate}
+                      onChange={handleTemplateChange}
+                    >
+                      <option value="">-- Select Template --</option>
+                      {emailTemplates.map((template) => (
+                        <option key={template.id} value={template.serviceName}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </Input>
+                  </FormGroup>
+
+                  {selectedTemplate && (
+                    <FormGroup>
+                      <Label>Edit Email Content</Label>
+                      <div
+                        style={{
+                          border: "1px solid #dee2e6",
+                          padding: "10px",
+                          borderRadius: "5px",
+                          minHeight: "300px",
+                        }}
+                      >
+                        <Editor
+                          editorState={editorState}
+                          onEditorStateChange={setEditorState}
+                          toolbar={{
+                            options: [
+                              "inline",
+                              "blockType",
+                              "fontSize",
+                              "list",
+                              "textAlign",
+                              "link",
+                              "emoji",
+                              "remove",
+                              "history",
+                            ],
+                            inline: {
+                              inDropdown: true,
+                              options: [
+                                "bold",
+                                "italic",
+                                "underline",
+                                "strikethrough",
+                              ],
+                            },
+                            blockType: {
+                              inDropdown: true,
+                              options: [
+                                "Normal",
+                                "H1",
+                                "H2",
+                                "H3",
+                                "Blockquote",
+                              ],
+                            },
+                            fontSize: {
+                              options: [
+                                8, 9, 10, 11, 12, 14, 16, 18, 24, 30, 36, 48,
+                              ],
+                            },
+                            list: {
+                              inDropdown: true,
+                              options: ["unordered", "ordered"],
+                            },
+                            textAlign: {
+                              inDropdown: true,
+                              options: ["left", "center", "right", "justify"],
+                            },
+                            link: {
+                              inDropdown: true,
+                              options: ["link", "unlink"],
+                            },
+                          }}
+                          editorStyle={{
+                            minHeight: "250px",
+                            padding: "0 10px",
+                          }}
+                        />
+                      </div>
+                    </FormGroup>
+                  )}
+                </Form>
+              </ModalBody>
+              <ModalFooter>
+                {selectedTemplate && (
+                  <Button
+                    color="secondary"
+                    onClick={handleSaveTemplate}
+                    disabled={templateSaving}
+                  >
+                    {templateSaving ? "Saving..." : "Save Template"}
+                  </Button>
+                )}
+                <Button
+                  color="primary"
+                  onClick={handleSendEmail}
+                  disabled={emailSending || !selectedTemplate}
+                >
+                  {emailSending ? "Sending..." : "Send Email"}
+                </Button>
+                <Button
+                  color="secondary"
+                  onClick={() => setEmailModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </ModalFooter>
+            </Modal>
+
             {isAdmin && (
               <div className="mt-4">
                 <h6 className="mb-3">📜 Lead Activities</h6>
@@ -924,7 +1236,7 @@ const AssignedLeadDetailPage = () => {
                           >
                             Details
                           </th>
-                          <th style={{ width: "5%" }}>Lead ID</th>
+                          <th style={{ width: "5%" }}>Entity Id</th>
                           <th style={{ width: "15%" }}>Performed By</th>
                           <th
                             style={{
@@ -955,6 +1267,8 @@ const AssignedLeadDetailPage = () => {
                                     ? "bg-warning text-dark"
                                     : activity.action.includes("reminder")
                                     ? "bg-info"
+                                    : activity.action.includes("email")
+                                    ? "bg-success"
                                     : "bg-secondary"
                                 }`}
                                 style={{ textTransform: "capitalize" }}
@@ -972,7 +1286,7 @@ const AssignedLeadDetailPage = () => {
                             >
                               {activity.details || "N/A"}
                             </td>
-                            <td>{activity.leadId || "N/A"}</td>
+                            <td>{activity.entityId || "N/A"}</td>
                             <td>
                               {(activity.performedByUser?.firstname || "User") +
                                 " " +

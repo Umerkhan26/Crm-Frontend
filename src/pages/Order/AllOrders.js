@@ -34,7 +34,6 @@ import {
 import * as XLSX from "xlsx";
 import { FiEdit2 } from "react-icons/fi";
 import AddLeadModal from "../../components/Modals/AddLeadModal";
-import ImportLeadsModal from "../../components/Modals/ImportLeadsModal";
 import ColumnMappingModal from "../../components/Modals/ColumnMappingModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -52,6 +51,7 @@ import useDeleteConfirmation from "../../components/Modals/DeleteConfirmation";
 import { debounce } from "lodash";
 import { useSelector } from "react-redux";
 import { hasAnyPermission } from "../../utils/permissions";
+import ImportClientLeadsModal from "../../components/Modals/ImportClientLeadsModal";
 
 const Allorders = () => {
   const navigate = useNavigate();
@@ -134,6 +134,7 @@ const Allorders = () => {
   const filterUserId = queryParams.get("filterUserId");
   const filterRole = queryParams.get("filterRole");
   const campaignNameParam = queryParams.get("campaign");
+  const campaignIdParam = queryParams.get("campaign");
 
   const toggleModal = (order = null) => {
     setSelectedOrder(order);
@@ -144,7 +145,6 @@ const Allorders = () => {
   const toggleVendorDropdown = () => setVendorDropdownOpen((prev) => !prev);
   const toggleCampaignDropdown = () => setCampaignDropdownOpen((prev) => !prev);
 
-  // Fetch campaigns
   useEffect(() => {
     const loadCampaigns = async () => {
       try {
@@ -159,25 +159,24 @@ const Allorders = () => {
   }, []);
 
   useEffect(() => {
-    if (
-      campaignNameParam &&
-      userRole === "admin" &&
-      filterUserId &&
-      filterRole
-    ) {
-      const selectedCampaignOption = campaignOptions.find(
-        (c) => c.label === campaignNameParam
-      );
-      if (selectedCampaignOption) {
-        setFilteredCampaignOptions([selectedCampaignOption]);
-        setSelectedCampaign(campaignNameParam);
+    if (campaignNameParam) {
+      setSelectedCampaign(campaignNameParam);
+
+      if (filterUserId && filterRole) {
+        const selectedCampaignOption = campaignOptions.find(
+          (c) => c.label === campaignNameParam
+        );
+        if (selectedCampaignOption) {
+          setFilteredCampaignOptions([selectedCampaignOption]);
+        } else {
+          setFilteredCampaignOptions([]);
+        }
       } else {
-        setFilteredCampaignOptions([]);
-        setSelectedCampaign("Choose Campaign...");
+        setFilteredCampaignOptions(campaignOptions);
       }
     } else {
       setFilteredCampaignOptions(campaignOptions);
-      setSelectedCampaign(campaignNameParam || "Choose Campaign...");
+      setSelectedCampaign("Choose Campaign...");
     }
   }, [campaignNameParam, campaignOptions, userRole, filterUserId, filterRole]);
 
@@ -372,18 +371,27 @@ const Allorders = () => {
   const filteredOrders = useMemo(() => {
     let filtered = Array.isArray(ordersData) ? ordersData : [];
 
-    if (selectedCampaign !== "Choose Campaign...") {
-      const campaign = campaignOptions.find(
+    if (campaignNameParam) {
+      const campaignFromUrl = campaignOptions.find(
+        (c) => c.label === campaignNameParam
+      );
+      if (campaignFromUrl) {
+        filtered = filtered.filter(
+          (order) => Number(order.campaign_id) === Number(campaignFromUrl.value)
+        );
+      }
+    } else if (selectedCampaign !== "Choose Campaign...") {
+      const campaignFromDropdown = campaignOptions.find(
         (c) => c.label === selectedCampaign
       );
-      if (campaign) {
+      if (campaignFromDropdown) {
         filtered = filtered.filter(
-          (order) => order.campaign_id == campaign.value
+          (order) =>
+            Number(order.campaign_id) === Number(campaignFromDropdown.value)
         );
       }
     }
 
-    // ✅ Filter by selected vendor
     if (selectedVendor !== "Choose Vendor...") {
       const selectedVendorObj = vendors.find(
         (v) => `${v.firstname} ${v.lastname}` === selectedVendor
@@ -428,8 +436,8 @@ const Allorders = () => {
     selectedVendor,
     campaignOptions,
     vendors,
+    campaignNameParam,
   ]);
-
   useEffect(() => {
     const loadVendors = async () => {
       try {
@@ -755,8 +763,17 @@ const Allorders = () => {
                       {filteredCampaignOptions.map((campaign, index) => (
                         <DropdownItem
                           key={index}
-                          onClick={() => setSelectedCampaign(campaign.label)}
-                          active={selectedCampaign === campaign.label}
+                          onClick={() => {
+                            if (campaignNameParam) {
+                              navigate("/order-index");
+                            }
+                            setSelectedCampaign(campaign.label);
+                          }}
+                          active={
+                            campaignNameParam
+                              ? campaign.label === campaignNameParam
+                              : selectedCampaign === campaign.label
+                          }
                           className="d-flex align-items-center"
                         >
                           {campaign.label}
@@ -875,7 +892,7 @@ const Allorders = () => {
       )}
       {canImportLeads && (
         <>
-          <ImportLeadsModal
+          <ImportClientLeadsModal
             isOpen={importModalOpen}
             toggle={toggleImportModal}
             onFileUpload={handleFileUpload}

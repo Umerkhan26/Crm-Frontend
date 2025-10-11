@@ -29,9 +29,10 @@ export const fetchAllLeads = async (
   page = 1,
   pageSize = 10,
   search = "",
-  status = ""
+  { filterType = "all", startDate = "", endDate = "" } = {}
 ) => {
   const token = getAuthToken();
+
   try {
     const queryParams = new URLSearchParams({
       page: page.toString(),
@@ -39,7 +40,12 @@ export const fetchAllLeads = async (
     });
 
     if (search) queryParams.append("search", search);
-    if (status) queryParams.append("status", status);
+
+    // ✅ Add backend date filtering parameters
+    if (filterType && filterType !== "all")
+      queryParams.append("filterType", filterType);
+    if (startDate) queryParams.append("startDate", startDate);
+    if (endDate) queryParams.append("endDate", endDate);
 
     const response = await fetch(
       `${API_URL}/getleads?${queryParams.toString()}`,
@@ -83,14 +89,12 @@ export const fetchAllLeads = async (
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
         checked: false,
-        // Flattened properties
         agentName: parsedData.agent_name || parsedData.agentName,
         firstName: parsedData.first_name || parsedData.firstName,
         lastName: parsedData.last_name || parsedData.lastName,
         phoneNumber: parsedData.phone_number || parsedData.phoneNumber,
         state: parsedData.state,
         date: parsedData.date,
-        // Assignment status
         isAssigned: hasAssignee,
         assignedTo: hasAssignee
           ? lead.assignees.map((a) => `${a.firstname} ${a.lastname}`).join(", ")
@@ -110,10 +114,21 @@ export const fetchAllLeads = async (
   }
 };
 
-export const fetchLeadsByCampaign = async (campaignName) => {
+export const fetchLeadsByCampaign = async (
+  campaignName,
+  page = 1,
+  limit = 10
+) => {
   try {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    }).toString();
+
     const response = await fetch(
-      `${API_URL}/leads/campaign/${encodeURIComponent(campaignName)}`,
+      `${API_URL}/leads/campaign/${encodeURIComponent(
+        campaignName
+      )}?${queryParams}`,
       {
         method: "GET",
         headers: {
@@ -128,10 +143,100 @@ export const fetchLeadsByCampaign = async (campaignName) => {
       throw new Error(errorData.message || "Failed to fetch leads by campaign");
     }
 
-    const data = await response.json();
-    return data;
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || "Failed to fetch leads by campaign");
+    }
+
+    const processedLeads = (result.data || []).map((lead) => {
+      const parsedData = normalizeLeadData(lead.leadData);
+      const assigneesArray = normalizeAssignees(lead.assignees);
+
+      return {
+        id: lead.id,
+        campaignName: lead.campaignName,
+        campaignType: lead.campaignName,
+        leadData: lead.leadData,
+        fullLeadData: parsedData,
+        assignees: assigneesArray,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+        checked: false,
+        agentName: parsedData.agent_name || parsedData.agentName || "",
+        firstName: parsedData.first_name || parsedData.firstName || "",
+        lastName: parsedData.last_name || parsedData.lastName || "",
+        phoneNumber: parsedData.phone_number || parsedData.phoneNumber || "",
+        state: parsedData.state || "",
+        date: parsedData.date || "",
+        isAssigned: assigneesArray.length > 0,
+        assignedTo: assigneesArray.length
+          ? assigneesArray
+              .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+              .join(", ")
+          : "Unassigned",
+      };
+    });
+
+    return {
+      data: processedLeads,
+      totalPages: result.totalPages || 1,
+      totalItems: result.totalItems || processedLeads.length,
+      currentPage: result.currentPage || page,
+    };
   } catch (error) {
     throw new Error(error.message || "Failed to fetch leads by campaign");
+  }
+};
+
+// Helper functions
+const normalizeLeadData = (leadData) => {
+  try {
+    if (!leadData) return {};
+
+    if (typeof leadData === "object" && leadData !== null) {
+      return leadData;
+    }
+
+    if (typeof leadData === "string") {
+      const trimmed = leadData.trim();
+      if (trimmed === "[object Object]") {
+        return {};
+      }
+      return JSON.parse(trimmed);
+    }
+
+    return {};
+  } catch (err) {
+    console.error("Error normalizing leadData:", leadData, err);
+    return {};
+  }
+};
+
+const normalizeAssignees = (assignees) => {
+  try {
+    if (Array.isArray(assignees)) {
+      return assignees;
+    }
+
+    if (typeof assignees === "string") {
+      const trimmed = assignees.trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        return JSON.parse(trimmed);
+      }
+      if (trimmed === "[object Object]") {
+        return [];
+      }
+    }
+
+    if (typeof assignees === "object" && assignees !== null) {
+      return [assignees];
+    }
+
+    return [];
+  } catch (error) {
+    console.warn("Failed to parse assignees:", assignees, error);
+    return [];
   }
 };
 export const updateLead = async (id, updatedData) => {
@@ -202,153 +307,29 @@ export const assignLeadToUser = async (leadId, userId) => {
     throw error;
   }
 };
-
-// export const fetchAllLeadsWithAssignee = async () => {
-//   const token = getAuthToken();
-//   try {
-//     const response = await fetch(`${API_URL}/getLeadsWithAssignee`, {
-//       method: "GET",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${token}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       const errorText = await response.text();
-//       throw new Error(
-//         `Failed to fetch leads with assignees: ${response.statusText} - ${errorText}`
-//       );
-//     }
-
-//     const result = await response.json();
-
-//     if (!Array.isArray(result.data)) {
-//       throw new Error("Invalid response format");
-//     }
-
-//     const leads = result.data.map((lead) => {
-//       const parsedData = JSON.parse(lead.leadData);
-//       const assigneesArray = (() => {
-//         try {
-//           return Array.isArray(lead.assignees)
-//             ? lead.assignees
-//             : JSON.parse(lead.assignees || "[]");
-//         } catch {
-//           return [];
-//         }
-//       })();
-
-//       return {
-//         id: lead.id,
-//         campaignName: lead.campaignName,
-//         campaignType: lead.campaignName,
-//         leadData: lead.leadData,
-//         fullLeadData: parsedData,
-//         assigneeId: lead.assignees.userId,
-//         assignees: lead.assignees,
-//         createdAt: lead.createdAt,
-//         updatedAt: lead.updatedAt,
-//         checked: false,
-//         // Flattened properties
-//         agentName: parsedData.agent_name,
-//         firstName: parsedData.first_name,
-//         lastName: parsedData.last_name,
-//         phoneNumber: parsedData.phone_number,
-//         state: parsedData.state,
-//         date: parsedData.date,
-//         // Assignment status
-//         isAssigned: assigneesArray.length > 0,
-//         assignedTo: assigneesArray.length
-//           ? assigneesArray
-//               .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
-//               .join(", ")
-//           : "Unassigned",
-//       };
-//     });
-
-//     return {
-//       data: leads,
-//       totalPages: 1,
-//       totalItems: leads.length,
-//       currentPage: 1,
-//     };
-//   } catch (error) {
-//     console.error("Error fetching leads with assignees:", error);
-//     throw error;
-//   }
-// };
-
-// export const fetchUnassignedLeads = async () => {
-//   const token = getAuthToken();
-//   try {
-//     const response = await fetch(`${API_URL}/getLeadsWithUnassigned`, {
-//       method: "GET",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${token}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       const errorText = await response.text();
-//       throw new Error(
-//         `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
-//       );
-//     }
-
-//     const result = await response.json();
-
-//     if (!Array.isArray(result.data)) {
-//       throw new Error("Invalid response format");
-//     }
-
-//     const leads = result.data.map((lead) => {
-//       const parsedData = JSON.parse(lead.leadData);
-//       return {
-//         id: lead.id,
-//         campaignName: lead.campaignName,
-//         campaignType: lead.campaignName,
-//         leadData: lead.leadData,
-//         fullLeadData: parsedData,
-//         assigneeId: lead.assigneeId,
-//         assignees: lead.assignees,
-//         createdAt: lead.createdAt,
-//         updatedAt: lead.updatedAt,
-//         checked: false,
-//         agentName: parsedData.agent_name,
-//         firstName: parsedData.first_name,
-//         lastName: parsedData.last_name,
-//         phoneNumber: parsedData.phone_number,
-//         state: parsedData.state,
-//         date: parsedData.date,
-//         isAssigned: !!lead.assigneeId,
-//         assignedTo: lead.assignee ? lead.assignee.firstname : "Unassigned",
-//       };
-//     });
-
-//     return {
-//       data: leads,
-//       totalPages: 1,
-//       totalItems: leads.length,
-//       currentPage: 1,
-//     };
-//   } catch (error) {
-//     console.error("Error fetching unassigned leads:", error);
-//     throw error;
-//   }
-// };
-
-export const fetchAllLeadsWithAssignee = async () => {
+export const fetchAllLeadsWithAssignee = async (
+  page = 1,
+  limit = 10,
+  search = ""
+) => {
   const token = getAuthToken();
   try {
-    const response = await fetch(`${API_URL}/getLeadsWithAssignee`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(search && { search }),
+    }).toString();
+
+    const response = await fetch(
+      `${API_URL}/getLeadsWithAssignee?${queryParams}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -359,52 +340,13 @@ export const fetchAllLeadsWithAssignee = async () => {
 
     const result = await response.json();
 
-    if (!Array.isArray(result.data)) {
-      throw new Error("Invalid response format");
+    if (!result.success) {
+      throw new Error(result.message || "Failed to fetch leads with assignees");
     }
 
-    const leads = result.data.map((lead) => {
-      // ✅ SAFE PARSE: Handle both string and object leadData
-      const parsedData = (() => {
-        try {
-          if (typeof lead.leadData === "string") {
-            return JSON.parse(lead.leadData);
-          } else if (
-            typeof lead.leadData === "object" &&
-            lead.leadData !== null
-          ) {
-            return lead.leadData;
-          } else {
-            return {};
-          }
-        } catch (error) {
-          console.warn("Failed to parse leadData for lead:", lead.id, error);
-          return {};
-        }
-      })();
-
-      // ✅ SAFE PARSE: Handle assignees
-      const assigneesArray = (() => {
-        try {
-          if (Array.isArray(lead.assignees)) {
-            return lead.assignees;
-          } else if (typeof lead.assignees === "string") {
-            const trimmed = lead.assignees.trim();
-            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-              return JSON.parse(trimmed);
-            } else if (trimmed === "[object Object]") {
-              return [];
-            } else {
-              return [];
-            }
-          } else {
-            return [];
-          }
-        } catch (error) {
-          console.warn("Failed to parse assignees for lead:", lead.id, error);
-          return [];
-        }
-      })();
+    const processedLeads = (result.data || []).map((lead) => {
+      const parsedData = normalizeLeadData(lead.leadData);
+      const assigneesArray = normalizeAssignees(lead.assignees);
 
       return {
         id: lead.id,
@@ -412,19 +354,16 @@ export const fetchAllLeadsWithAssignee = async () => {
         campaignType: lead.campaignName,
         leadData: lead.leadData,
         fullLeadData: parsedData,
-        assigneeId: lead.assigneeId,
         assignees: assigneesArray,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
         checked: false,
-        // Flattened properties
         agentName: parsedData.agent_name || parsedData.agentName || "",
         firstName: parsedData.first_name || parsedData.firstName || "",
         lastName: parsedData.last_name || parsedData.lastName || "",
         phoneNumber: parsedData.phone_number || parsedData.phoneNumber || "",
         state: parsedData.state || "",
         date: parsedData.date || "",
-        // Assignment status
         isAssigned: assigneesArray.length > 0,
         assignedTo: assigneesArray.length
           ? assigneesArray
@@ -435,10 +374,10 @@ export const fetchAllLeadsWithAssignee = async () => {
     });
 
     return {
-      data: leads,
-      totalPages: 1,
-      totalItems: leads.length,
-      currentPage: 1,
+      data: processedLeads,
+      totalPages: result.totalPages || 1,
+      totalItems: result.totalItems || processedLeads.length,
+      currentPage: result.currentPage || page,
     };
   } catch (error) {
     console.error("Error fetching leads with assignees:", error);
@@ -446,69 +385,46 @@ export const fetchAllLeadsWithAssignee = async () => {
   }
 };
 
-export const fetchUnassignedLeads = async () => {
+export const fetchUnassignedLeads = async (
+  page = 1,
+  limit = 10,
+  searchTerm = ""
+) => {
   const token = getAuthToken();
   try {
-    const response = await fetch(`${API_URL}/getLeadsWithUnassigned`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(searchTerm && { search: searchTerm }),
+    }).toString();
+
+    const response = await fetch(
+      `${API_URL}/getLeadsWithUnassigned?${queryParams}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error();
-      // `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
+      throw new Error(
+        `Failed to fetch unassigned leads: ${response.statusText} - ${errorText}`
+      );
     }
 
     const result = await response.json();
 
-    if (!Array.isArray(result.data)) {
-      throw new Error("Invalid response format");
+    if (!result.success) {
+      throw new Error(result.message || "Failed to fetch unassigned leads");
     }
 
-    const leads = result.data.map((lead) => {
-      // ✅ SAFE PARSE: Handle both string and object leadData
-      const parsedData = (() => {
-        try {
-          if (typeof lead.leadData === "string") {
-            return JSON.parse(lead.leadData);
-          } else if (
-            typeof lead.leadData === "object" &&
-            lead.leadData !== null
-          ) {
-            return lead.leadData;
-          } else {
-            return {};
-          }
-        } catch (error) {
-          console.warn("Failed to parse leadData for lead:", lead.id, error);
-          return {};
-        }
-      })();
-
-      // ✅ SAFE PARSE: Handle assignees for unassigned leads
-      const assigneesArray = (() => {
-        try {
-          if (Array.isArray(lead.assignees)) {
-            return lead.assignees;
-          } else if (typeof lead.assignees === "string") {
-            const trimmed = lead.assignees.trim();
-            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-              return JSON.parse(trimmed);
-            } else {
-              return [];
-            }
-          } else {
-            return [];
-          }
-        } catch (error) {
-          console.warn("Failed to parse assignees for lead:", lead.id, error);
-          return [];
-        }
-      })();
+    const processedLeads = (result.data || []).map((lead) => {
+      const parsedData = normalizeLeadData(lead.leadData);
+      const assigneesArray = normalizeAssignees(lead.assignees);
 
       return {
         id: lead.id,
@@ -516,7 +432,6 @@ export const fetchUnassignedLeads = async () => {
         campaignType: lead.campaignName,
         leadData: lead.leadData,
         fullLeadData: parsedData,
-        assigneeId: lead.assigneeId,
         assignees: assigneesArray,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
@@ -527,16 +442,16 @@ export const fetchUnassignedLeads = async () => {
         phoneNumber: parsedData.phone_number || parsedData.phoneNumber || "",
         state: parsedData.state || "",
         date: parsedData.date || "",
-        isAssigned: assigneesArray.length > 0 || !!lead.assigneeId,
-        assignedTo: lead.assignee ? lead.assignee.firstname : "Unassigned",
+        isAssigned: assigneesArray.length > 0,
+        assignedTo: "Unassigned",
       };
     });
 
     return {
-      data: leads,
-      totalPages: 1,
-      totalItems: leads.length,
-      currentPage: 1,
+      data: processedLeads,
+      totalPages: result.totalPages || 1,
+      totalItems: result.totalItems || processedLeads.length,
+      currentPage: result.currentPage || page,
     };
   } catch (error) {
     console.error("Error fetching unassigned leads:", error);
@@ -745,5 +660,36 @@ export const deleteLeadActivityById = async (activityId, token) => {
     return await response.json();
   } catch (error) {
     throw new Error(error.message || "Error deleting lead activity");
+  }
+};
+
+export const importLeads = async (formData) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Authentication token not found");
+    }
+
+    const options = {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type for FormData - let browser set it with boundary
+      },
+      body: formData,
+    };
+
+    const response = await fetch(`${API_URL}/import-leads`, options);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to import leads");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error importing leads:", error);
+    throw error;
   }
 };

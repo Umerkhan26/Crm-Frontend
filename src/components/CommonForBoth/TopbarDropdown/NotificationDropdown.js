@@ -71,7 +71,6 @@ const NotificationDropdown = ({ t }) => {
       }
       const count = await getUnreadCount(userId);
       setUnreadCount(count);
-      console.log("Current unread count:", count);
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
       setUnreadCount(0);

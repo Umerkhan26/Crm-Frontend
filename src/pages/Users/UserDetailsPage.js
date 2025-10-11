@@ -112,41 +112,6 @@ const UserDetailsPage = () => {
     }
   };
 
-  // useEffect(() => {
-  //   const fetchUserDetails = async () => {
-  //     try {
-  //       setLoading(true);
-
-  //       // Restrict access to admin users with 'user:get' permission
-  //       const canView = hasAnyPermission(currentUser, ["user:get"]);
-  //       if (!canView) {
-  //         throw new Error("You don't have permission to view this page");
-  //       }
-
-  //       const response = await getUserById(userId);
-  //       let userData =
-  //         response.data?.find((u) => u.id === parseInt(userId)) ||
-  //         response.user ||
-  //         response.data ||
-  //         response;
-
-  //       if (!userData) {
-  //         throw new Error("User data not found");
-  //       }
-
-  //       setUser(userData);
-  //       await fetchUserCampaigns(userData);
-  //     } catch (err) {
-  //       setError(err.message || "Failed to fetch user details");
-  //       toast.error(err.message || "Failed to load user details");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchUserDetails();
-  // }, [userId, currentUser, navigate]);
-
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
@@ -232,6 +197,7 @@ const UserDetailsPage = () => {
           <Card>
             <CardBody>
               <Alert color="danger">{error}</Alert>
+
               <Button color="primary" onClick={() => navigate(-1)}>
                 Go Back
               </Button>
@@ -360,6 +326,18 @@ const UserDetailsPage = () => {
           <CardBody>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5 className="mb-0">Campaign Access</h5>
+              {currentUser?.role?.name?.toLowerCase() === "admin" &&
+                (!user?.userrole || user?.userrole.trim() === "") && (
+                  <Button
+                    color="primary"
+                    size="sm"
+                    className="me-2"
+                    onClick={() => navigate(`/user-reports/${userId}`)}
+                  >
+                    <i className="mdi mdi-chart-bar me-1"></i>
+                    Reports
+                  </Button>
+                )}
             </div>
             {campaignLoading ? (
               <div className="text-center py-3">

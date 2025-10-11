@@ -258,7 +258,13 @@ const AllCampaigns = () => {
                                     "fromCampaignLink",
                                     "true"
                                   );
-                                  navigate(`/order-index?campaign=${row.id}`);
+
+                                  // navigate(`/order-index?campaign=${row.id}`);
+                                  navigate(
+                                    `/order-index?campaign=${encodeURIComponent(
+                                      row.campaignName
+                                    )}`
+                                  );
                                 }}
                                 style={{
                                   color: "blue",

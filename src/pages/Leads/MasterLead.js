@@ -42,15 +42,6 @@ import { toast } from "react-toastify";
 import { fetchCampaigns } from "../../services/campaignService";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/material_green.css";
-import {
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  isWithinInterval,
-  subDays,
-  parseISO,
-} from "date-fns";
 
 const MasterLead = () => {
   const navigate = useNavigate();
@@ -92,42 +83,6 @@ const MasterLead = () => {
     setState((prev) => ({ ...prev, ...newState }));
   };
 
-  const filterLeadsByDate = (leads) => {
-    if (dateFilter === "all") return leads;
-
-    const now = new Date();
-    let startDate, endDate;
-
-    switch (dateFilter) {
-      case "today":
-        startDate = subDays(now, 1);
-        endDate = now;
-        break;
-      case "weekend":
-        startDate = startOfWeek(now);
-        endDate = endOfWeek(now);
-        break;
-      case "month":
-        startDate = startOfMonth(now);
-        endDate = endOfMonth(now);
-        break;
-      case "custom":
-        if (!customDateRange.start || !customDateRange.end) return leads;
-        startDate = customDateRange.start;
-        endDate = customDateRange.end;
-        break;
-      default:
-        return leads;
-    }
-
-    return leads.filter((lead) => {
-      const leadDate = lead.createdAt
-        ? parseISO(lead.createdAt)
-        : new Date(lead.updatedAt);
-      return isWithinInterval(leadDate, { start: startDate, end: endDate });
-    });
-  };
-
   const toggleDateDropdown = () => setDateDropdownOpen((prev) => !prev);
 
   useEffect(() => {
@@ -144,6 +99,26 @@ const MasterLead = () => {
     loadCampaigns();
   }, []);
 
+  const mapDateFilter = (filter) => {
+    switch (filter) {
+      case "today":
+        return "today";
+      case "daily":
+        return "daily";
+      case "weekend":
+        return "weekly";
+      case "month":
+        return "monthly";
+      case "year":
+        return "yearly";
+      case "custom":
+        return "custom";
+      case "all":
+      default:
+        return ""; // empty for all dates
+    }
+  };
+
   const fetchData = useCallback(async () => {
     try {
       const { activeFilter, pagination, searchText, selectedCampaign } = state;
@@ -152,194 +127,70 @@ const MasterLead = () => {
       let response;
 
       if (selectedCampaign) {
-        response = await fetchLeadsByCampaign(selectedCampaign);
-
-        if (!response || !response.length) {
-          updateState({
-            leads: [],
-            loading: false,
-            searchLoading: false,
-            pagination: {
-              ...state.pagination,
-              totalPages: 1,
-              totalItems: 0,
-              currentPage: 1,
-            },
-          });
-          return;
-        }
+        response = await fetchLeadsByCampaign(
+          selectedCampaign,
+          pagination.currentPage,
+          pagination.pageSize
+        );
       } else if (activeFilter === "assigned") {
-        response = await fetchAllLeadsWithAssignee();
-      } else if (activeFilter === "unassigned") {
-        response = await fetchUnassignedLeads();
-      } else {
-        response = await fetchAllLeads(
+        response = await fetchAllLeadsWithAssignee(
           pagination.currentPage,
           pagination.pageSize,
           searchText
         );
+      } else if (activeFilter === "unassigned") {
+        response = await fetchUnassignedLeads(
+          pagination.currentPage,
+          pagination.pageSize,
+          searchText
+        );
+      } else {
+        response = await fetchAllLeads(
+          pagination.currentPage,
+          pagination.pageSize,
+          searchText,
+          {
+            filterType: mapDateFilter(dateFilter),
+            startDate: customDateRange.start
+              ? customDateRange.start.toISOString().split("T")[0]
+              : "",
+            endDate: customDateRange.end
+              ? customDateRange.end.toISOString().split("T")[0]
+              : "",
+          }
+        );
       }
 
-      let filteredLeads = Array.isArray(response)
-        ? response
-        : response.data || [];
-
-      // Validate that all leads have an ID
-      filteredLeads = filteredLeads.filter((lead) => {
-        if (!lead.id) {
-          console.warn("Lead missing ID:", lead);
-          return false;
-        }
-        return true;
-      });
-
-      // const normalizeLeadData = (lead) => {
-      //   if (typeof lead.leadData === "string") {
-      //     try {
-      //       return JSON.parse(lead.leadData);
-      //     } catch {
-      //       return {};
-      //     }
-      //   }
-      //   return lead.leadData || {};
-      // };
-
-      const normalizeLeadData = (leadData) => {
-        try {
-          if (!leadData) return {};
-
-          // If it's already an object, return it directly
-          if (typeof leadData === "object" && leadData !== null) {
-            return leadData;
-          }
-
-          // If it's a string, try to parse it
-          if (typeof leadData === "string") {
-            const trimmed = leadData.trim();
-
-            // Handle the "[object Object]" case
-            if (trimmed === "[object Object]") {
-              console.warn(
-                'Found "[object Object]" string, returning empty object'
-              );
-              return {};
-            }
-
-            // Try to parse as JSON
-            try {
-              return JSON.parse(trimmed);
-            } catch (parseError) {
-              console.warn("Failed to parse leadData as JSON:", trimmed);
-              return {};
-            }
-          }
-
-          return {};
-        } catch (err) {
-          console.error("Error normalizing leadData:", leadData, err);
-          return {};
-        }
-      };
-
-      if (searchText) {
-        filteredLeads = filteredLeads.filter((lead) => {
-          const data = normalizeLeadData(lead);
-          return Object.values(data).some((value) =>
-            String(value).toLowerCase().includes(searchText.toLowerCase())
-          );
+      // Handle empty response
+      if (!response || !response.data || response.data.length === 0) {
+        updateState({
+          leads: [],
+          loading: false,
+          searchLoading: false,
+          pagination: {
+            ...state.pagination,
+            totalPages: response?.totalPages || 1,
+            totalItems: response?.totalItems || 0,
+            currentPage: response?.currentPage || 1,
+          },
         });
+        return;
       }
 
-      filteredLeads = filterLeadsByDate(filteredLeads);
+      // // Filter by date if needed
+      // let filteredLeads = response.data;
+      // filteredLeads = filterLeadsByDate(filteredLeads);
+      const filteredLeads = response.data;
 
-      // const mappedLeads = filteredLeads.map((lead) => {
-      //   const leadData =
-      //     typeof lead.leadData === "string"
-      //       ? JSON.parse(lead.leadData)
-      //       : lead.leadData || {};
-
-      //   const assigneesArray = Array.isArray(lead.assignees)
-      //     ? lead.assignees
-      //     : [];
-
-      //   return {
-      //     ...lead,
-      //     checked: false,
-      //     firstName: leadData.first_name || leadData.firstName || "",
-      //     lastName: leadData.last_name || leadData.lastName || "",
-      //     state: leadData.state || "",
-      //     phoneNumber: leadData.phone_number || leadData.phoneNumber || "",
-      //     agentName: leadData.agent_name || leadData.agentName || "",
-      //     assignedTo: assigneesArray.length
-      //       ? assigneesArray
-      //           .map((a) => `${a.firstname} ${a.lastname}`)
-      //           .join(", ")
-      //       : "Unassigned",
-      //     isAssigned: assigneesArray.length > 0,
-      //   };
-      // });
-
-      const mappedLeads = filteredLeads.map((lead) => {
-        // Parse leadData safely
-        let leadData = {};
-        if (typeof lead.leadData === "string") {
-          try {
-            leadData = JSON.parse(lead.leadData);
-          } catch {
-            leadData = {};
-          }
-        } else if (
-          typeof lead.leadData === "object" &&
-          lead.leadData !== null
-        ) {
-          leadData = lead.leadData;
-        }
-
-        const assigneesArray = Array.isArray(lead.assignees)
-          ? lead.assignees
-          : [];
-
-        return {
-          ...lead,
-          checked: false,
-          firstName:
-            lead.firstName || leadData.first_name || leadData.firstName || "",
-          lastName:
-            lead.lastName || leadData.last_name || leadData.lastName || "",
-          state: lead.state || leadData.state || "",
-          phoneNumber:
-            lead.phoneNumber ||
-            leadData.phone_number ||
-            leadData.phoneNumber ||
-            "",
-          agentName:
-            lead.agentName || leadData.agent_name || leadData.agentName || "",
-          assignedTo:
-            lead.assignedTo ||
-            (assigneesArray.length
-              ? assigneesArray
-                  .map((a) =>
-                    a.firstname && a.lastname
-                      ? `${a.firstname} ${a.lastname}`
-                      : "Unknown User"
-                  )
-                  .join(", ")
-              : "Unassigned"),
-          isAssigned:
-            lead.isAssigned !== undefined
-              ? lead.isAssigned
-              : assigneesArray.length > 0,
-        };
-      });
-
+      // Update state with the processed data
       updateState({
-        leads: mappedLeads,
+        leads: filteredLeads,
         loading: false,
         searchLoading: false,
         pagination: {
           ...state.pagination,
           totalPages: response.totalPages || 1,
-          totalItems: response.totalItems || mappedLeads.length,
+          totalItems: response.totalItems || filteredLeads.length,
           currentPage: response.currentPage || 1,
         },
       });

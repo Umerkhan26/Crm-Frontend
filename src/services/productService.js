@@ -1,13 +1,6 @@
 import { API_URL } from "./auth";
 import { updateLeadStatus } from "./leadService";
 
-// const handleResponse = async (response) => {
-//   if (!response.ok) {
-//     const error = await response.json();
-//     throw new Error(error.message || "Request failed");
-//   }
-//   return response.json();
-// };
 export const createProduct = async (payload) => {
   try {
     const token = localStorage.getItem("token");

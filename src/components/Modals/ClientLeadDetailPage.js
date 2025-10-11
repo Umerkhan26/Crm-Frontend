@@ -1008,7 +1008,7 @@ const ClientLeadDetailPage = () => {
                             >
                               Details
                             </th>
-                            <th style={{ width: "5%" }}>Lead ID</th>
+                            <th style={{ width: "5%" }}>Entity Id</th>
                             <th style={{ width: "15%" }}>Performed By</th>
                             <th
                               style={{
@@ -1060,7 +1060,7 @@ const ClientLeadDetailPage = () => {
                               </td>
                               <td>
                                 {activity.clientLeadId ||
-                                  activity.leadId ||
+                                  activity.entityId ||
                                   "N/A"}
                               </td>
                               <td>

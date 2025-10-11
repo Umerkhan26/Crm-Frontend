@@ -71,6 +71,7 @@ import AssignedLeadDetailPage from "../pages/AssignedLeads/AssignedLeadDetailPag
 import SaleDetails from "../pages/Product/SaleDetailsPage";
 import ClientLeadDetailPage from "../components/Modals/ClientLeadDetailPage";
 import MasterLeadDetailPage from "../components/Modals/LeadDetailPage";
+import UserReportsPage from "../pages/Users/ReportDetailPage";
 
 const authProtectedRoutes = [
   // Tables
@@ -86,6 +87,11 @@ const authProtectedRoutes = [
     path: "/user-details/:userId",
     component: <UserDetailsPage />,
     requiredPermissions: ["user:get", "user:getById"],
+  },
+  {
+    path: "/user-reports/:userId",
+    component: <UserReportsPage />,
+    exact: true,
   },
   {
     path: "/user-register",

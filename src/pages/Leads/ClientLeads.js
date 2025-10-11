@@ -123,7 +123,6 @@ const ClientLeads = () => {
         debouncedSearch
       );
 
-      console.log("ALL CLIENT LEAD", response);
       setLeads(response.data || []);
       setPagination((prev) => ({
         ...prev,
